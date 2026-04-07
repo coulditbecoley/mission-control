@@ -23,50 +23,42 @@ export async function GET() {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    // Try /status endpoint first, then fallback to /health or /ping
-    const endpoints = ["/status", "/health", "/"];
-    let res = null;
-    let lastError = null;
+    // Health check: just verify the gateway is reachable
+    const res = await fetch(gatewayUrl, {
+      headers,
+      cache: "no-store",
+    });
 
-    for (const endpoint of endpoints) {
-      try {
-        const url = `${gatewayUrl}${endpoint}`;
-        console.log(`Trying endpoint: ${url}`);
-        
-        res = await fetch(url, {
-          headers,
-          cache: "no-store",
-        });
-
-        if (res.ok) {
-          break;
-        }
-      } catch (e) {
-        lastError = e;
-        console.error(`Endpoint ${endpoint} failed:`, e);
-        continue;
-      }
-    }
-
-    if (!res || !res.ok) {
+    if (!res.ok) {
       return NextResponse.json(
         { 
-          error: "Failed to connect to gateway",
+          status: "error",
+          message: `Gateway returned HTTP ${res.status}`,
           url: gatewayUrl,
-          tried_endpoints: endpoints,
-          details: lastError ? String(lastError) : `HTTP ${res?.status}`,
+          timestamp: new Date().toISOString(),
         },
         { status: 503 }
       );
     }
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    // Gateway is up
+    return NextResponse.json({
+      status: "healthy",
+      message: "OpenClaw Gateway is reachable",
+      url: gatewayUrl,
+      timestamp: new Date().toISOString(),
+      authenticated: !!token,
+    });
   } catch (error) {
     console.error("Status error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch gateway status", details: String(error) },
-      { status: 500 }
+      { 
+        status: "error",
+        message: "Failed to reach OpenClaw Gateway",
+        details: String(error),
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
     );
   }
 }
