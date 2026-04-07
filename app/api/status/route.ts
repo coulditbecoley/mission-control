@@ -20,8 +20,14 @@ export async function GET() {
     };
 
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
+      console.log("Token passed in Authorization header");
+    } else {
+      console.log("WARNING: No OPENCLAW_GATEWAY_TOKEN found in environment");
     }
+
+    console.log("Gateway URL:", gatewayUrl);
+    console.log("Headers:", { ...headers, Authorization: headers.Authorization ? "***" : "missing" });
 
     // Health check: just verify the gateway is reachable
     const res = await fetch(gatewayUrl, {
@@ -48,6 +54,11 @@ export async function GET() {
       url: gatewayUrl,
       timestamp: new Date().toISOString(),
       authenticated: !!token,
+      gatewayTokenPresent: !!token,
+      environment: {
+        OPENCLAW_GATEWAY_URL: !!process.env.OPENCLAW_GATEWAY_URL,
+        OPENCLAW_GATEWAY_TOKEN: !!process.env.OPENCLAW_GATEWAY_TOKEN,
+      }
     });
   } catch (error) {
     console.error("Status error:", error);
