@@ -36,7 +36,6 @@ export async function GET() {
         res = await fetch(url, {
           headers,
           cache: "no-store",
-          timeout: 5000,
         });
 
         if (res.ok) {
