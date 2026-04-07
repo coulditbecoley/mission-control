@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    let gatewayUrl = process.env.OPENCLAW_GATEWAY_URL || "http://localhost:8787";
-    const token = process.env.OPENCLAW_TOKEN;
+    let gatewayUrl = process.env.OPENCLAW_GATEWAY_URL || "wss://openclaw-ke4f.srv1566532.hstgr.cloud";
+    const token = process.env.OPENCLAW_GATEWAY_TOKEN;
 
     // Convert WebSocket URL to HTTPS
     if (gatewayUrl.startsWith("wss://")) {
