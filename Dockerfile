@@ -9,6 +9,9 @@ RUN npm install
 COPY . .
 RUN npm run build
 
+# Ensure public directory exists
+RUN mkdir -p /app/public
+
 FROM node:18-alpine
 
 WORKDIR /app
