@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { Task, Project, Agent, ActivityLog, KnowledgeItem, DashboardMetrics } from './types';
 
+// Simple UUID v4 generator (no crypto dependency)
+const generateId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 interface DashboardStore {
   // Tasks
   tasks: Task[];
@@ -44,7 +53,7 @@ interface DashboardStore {
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
   tasks: [],
   setTasks: (tasks) => set({ tasks }),
-  addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
+  addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, id: task.id || generateId() }] })),
   updateTask: (id, updates) =>
     set((state) => ({
       tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
@@ -53,7 +62,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
   projects: [],
   setProjects: (projects) => set({ projects }),
-  addProject: (project) => set((state) => ({ projects: [...state.projects, project] })),
+  addProject: (project) => set((state) => ({ projects: [...state.projects, { ...project, id: project.id || generateId() }] })),
   updateProject: (id, updates) =>
     set((state) => ({
       projects: state.projects.map((p) => (p.id === id ? { ...p, ...updates } : p)),
