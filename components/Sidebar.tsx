@@ -25,7 +25,6 @@ const navItems = [
   { href: '/office', icon: Building2, label: 'Office' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/docs', icon: FileText, label: 'Docs' },
-  { href: '/knowledge', icon: BookOpen, label: 'Knowledge' },
   { href: '/activity', icon: Activity, label: 'Activity' },
 ];
 
