@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Sidebar } from '@/components/Sidebar';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Mission Control",
-  description: "OpenClaw Gateway Control Center",
+  title: 'OpenClaw Dashboard',
+  description: 'Linear-style OpenClaw Management Dashboard',
 };
 
 export default function RootLayout({
@@ -13,8 +14,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {children}
+      <body className="bg-gray-50">
+        <div className="flex h-screen">
+          <Sidebar />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );
