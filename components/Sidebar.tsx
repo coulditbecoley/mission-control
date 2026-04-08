@@ -19,7 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', icon: Home, label: 'Dashboard' },
+  { href: '/', icon: Home, label: 'Overview' },
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/agents', icon: Zap, label: 'Agents' },
