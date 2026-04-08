@@ -10,6 +10,7 @@ import {
   BookOpen,
   Activity,
   Calendar,
+  FileText,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ const navItems = [
   { href: '/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/agents', icon: Zap, label: 'Agents' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
+  { href: '/docs', icon: FileText, label: 'Docs' },
   { href: '/knowledge', icon: BookOpen, label: 'Knowledge' },
   { href: '/activity', icon: Activity, label: 'Activity' },
 ];
