@@ -1,304 +1,198 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { FolderOpen, Plus, X } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
+import { useEffect, useState } from 'react';
+import { FolderOpen, GitBranch, Calendar, RefreshCw } from 'lucide-react';
 
 interface Project {
   id: string;
   name: string;
-  description: string;
-  status: 'planning' | 'active' | 'completed' | 'paused';
-  progress: number;
-  color: string;
-  dueDate: string;
-  team: string[];
+  description?: string;
+  status: 'planning' | 'active' | 'completed' | 'on-hold';
+  progress?: number;
+  startDate?: string;
+  endDate?: string;
+  source?: 'local' | 'gateway';
 }
 
-export default function ProjectsPage() {
+export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    status: 'active' as const,
-    progress: 0,
-    color: 'bg-blue-500',
-    dueDate: '',
-    team: '',
-  });
   const [loading, setLoading] = useState(true);
+  const [source, setSource] = useState<'local' | 'gateway'>('local');
 
   useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const response = await fetch('/api/projects');
-        const data = await response.json();
-        setProjects(data.projects || []);
-      } catch (error) {
-        console.error('Failed to load projects:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProjects();
+    fetchProjects();
   }, []);
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const newProject: Project = {
-      id: Date.now().toString(),
-      name: formData.name,
-      description: formData.description,
-      status: formData.status,
-      progress: formData.progress,
-      color: formData.color,
-      dueDate: formData.dueDate,
-      team: formData.team.split(',').map(t => t.trim()).filter(t => t),
-    };
-
+  async function fetchProjects() {
     try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', project: newProject }),
-      });
+      setLoading(true);
 
-      const data = await response.json();
-      setProjects(data.projects);
-      setFormData({
-        name: '',
-        description: '',
-        status: 'active',
-        progress: 0,
-        color: 'bg-blue-500',
-        dueDate: '',
-        team: '',
-      });
-      setIsModalOpen(false);
+      // Try gateway first
+      const gatewayRes = await fetch('/api/gateway');
+      if (gatewayRes.ok) {
+        const gatewayData = await gatewayRes.json();
+
+        if (gatewayData.projects && gatewayData.projects.length > 0) {
+          const gatewayProjects = gatewayData.projects.map((p: any, i: number) => ({
+            id: p.id || `project-${i}`,
+            name: p.name || p.title || `Project ${i + 1}`,
+            description: p.description || '',
+            status: mapProjectStatus(p.status || 'active'),
+            progress: p.progress || 0,
+            startDate: p.startDate,
+            endDate: p.endDate,
+            source: 'gateway',
+          }));
+
+          setProjects(gatewayProjects);
+          setSource('gateway');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fallback to local API
+      const localRes = await fetch('/api/projects');
+      if (localRes.ok) {
+        const localData = await localRes.json();
+        setProjects(localData);
+        setSource('local');
+      }
     } catch (error) {
-      console.error('Failed to create project:', error);
+      console.error('Failed to fetch projects:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
-  const handleDeleteProject = async (id: string) => {
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', project: { id } }),
-      });
-
-      const data = await response.json();
-      setProjects(data.projects);
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'text-green-400';
-      case 'completed':
-        return 'text-emerald-400';
-      case 'paused':
-        return 'text-yellow-400';
-      case 'planning':
-        return 'text-blue-400';
-      default:
-        return 'text-gray-400';
-    }
-  };
+  function mapProjectStatus(status: string): 'planning' | 'active' | 'completed' | 'on-hold' {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('complete') || s.includes('done')) return 'completed';
+    if (s.includes('hold') || s.includes('pause')) return 'on-hold';
+    if (s.includes('plan')) return 'planning';
+    return 'active';
+  }
 
   if (loading) {
     return (
       <div className="flex-1 overflow-auto bg-[#0a0e27] flex items-center justify-center">
-        <p className="text-gray-400">Loading projects...</p>
+        <div className="text-center">
+          <p className="text-gray-400 mb-2">Loading projects...</p>
+          <div className="w-8 h-8 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto" />
+        </div>
       </div>
     );
   }
 
+  const statusColors = {
+    planning: 'bg-blue-900/20 text-blue-400',
+    active: 'bg-green-900/20 text-green-400',
+    completed: 'bg-purple-900/20 text-purple-400',
+    'on-hold': 'bg-yellow-900/20 text-yellow-400',
+  };
+
   return (
     <div className="flex-1 overflow-auto bg-[#0a0e27]">
-      <div className="p-8">
+      <div className="p-8 max-w-6xl">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
             <FolderOpen className="text-blue-400" size={32} />
             <h1 className="text-4xl font-bold text-white">Projects</h1>
           </div>
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus size={20} />
-            New Project
-          </Button>
+          <p className="text-gray-400">
+            {source === 'gateway' ? '🔗 Synced from OpenClaw Gateway' : '📊 Project management'}
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Total Projects</p>
+            <p className="text-3xl font-bold text-white">{projects.length}</p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Active</p>
+            <p className="text-3xl font-bold text-green-400">
+              {projects.filter((p) => p.status === 'active').length}
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Completed</p>
+            <p className="text-3xl font-bold text-purple-400">
+              {projects.filter((p) => p.status === 'completed').length}
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Avg Progress</p>
+            <p className="text-3xl font-bold text-blue-400">
+              {Math.round(
+                projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length
+              )}
+              %
+            </p>
+          </div>
         </div>
 
         {/* Projects Grid */}
-        {projects.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            No projects yet. Create one to get started!
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className="bg-[#141829] rounded-lg border border-[#374151] p-6 hover:border-[#4b5563] transition-all"
-              >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {projects.length === 0 ? (
+            <div className="col-span-2 text-center py-12">
+              <p className="text-gray-400">No projects found</p>
+            </div>
+          ) : (
+            projects.map((project) => (
+              <div key={project.id} className="bg-white/10 rounded-lg border border-white/20 p-6 hover:border-white/40 transition-all">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white">{project.name}</h3>
-                    <p className="text-sm text-gray-400 mt-1">{project.description}</p>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{project.name}</h3>
+                    {project.description && (
+                      <p className="text-sm text-gray-400 mt-1">{project.description}</p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => handleDeleteProject(project.id)}
-                    className="p-1 text-gray-500 hover:text-red-400 hover:bg-[#1a1f3a] rounded transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
+                  <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${statusColors[project.status]}`}>
+                    {project.status}
+                  </span>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-400">Progress</span>
-                    <span className="text-xs font-semibold text-white">{project.progress}%</span>
+                {/* Progress */}
+                {project.progress !== undefined && (
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-gray-400">Progress</span>
+                      <span className="text-xs font-medium text-white">{project.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all"
+                        style={{ width: `${project.progress}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-[#0a0e27] rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-blue-400 h-2 rounded-full transition-all"
-                      style={{ width: `${project.progress}%` }}
-                    ></div>
-                  </div>
-                </div>
+                )}
 
-                {/* Status and Team */}
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Status</span>
-                    <span className={`font-semibold ${getStatusColor(project.status)}`}>
-                      {project.status}
-                    </span>
-                  </div>
-                  {project.dueDate && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Due Date</span>
-                      <span className="text-gray-300">{project.dueDate}</span>
-                    </div>
-                  )}
-                  {project.team.length > 0 && (
-                    <div>
-                      <span className="text-gray-400 block mb-2">Team</span>
-                      <div className="flex flex-wrap gap-2">
-                        {project.team.map((member) => (
-                          <span
-                            key={member}
-                            className="text-xs bg-[#1a1f3a] text-gray-300 px-2 py-1 rounded"
-                          >
-                            {member}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                {/* Dates */}
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Calendar size={14} />
+                  {project.startDate && <span>{new Date(project.startDate).toLocaleDateString()}</span>}
+                  {project.endDate && <span>→ {new Date(project.endDate).toLocaleDateString()}</span>}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
+
+        {/* Refresh Button */}
+        <div className="mt-8">
+          <button
+            onClick={fetchProjects}
+            className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+          >
+            <RefreshCw size={18} />
+            Refresh Projects
+          </button>
+        </div>
       </div>
-
-      {/* Create Project Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Project">
-        <form onSubmit={handleCreateProject} className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Project Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Project name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
-              placeholder="Project description"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="planning">Planning</option>
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Progress (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={formData.progress}
-                onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
-                className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Due Date</label>
-            <input
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">Team Members (comma-separated)</label>
-            <input
-              type="text"
-              value={formData.team}
-              onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Odin, Loki, Thor"
-            />
-          </div>
-
-          <div className="flex gap-3 justify-end">
-            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Create Project
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }
