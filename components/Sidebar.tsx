@@ -12,10 +12,12 @@ import {
   Building2,
   TrendingUp,
   Bitcoin,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
+  { href: '/overview', icon: BarChart3, label: 'Overview', badge: '🏠' },
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/agents', icon: Zap, label: 'Agents' },
