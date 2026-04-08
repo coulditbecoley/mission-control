@@ -16,32 +16,32 @@ export function AgentCard({ agent }: AgentCardProps) {
         : 'secondary';
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-[#141829] rounded-lg border border-[#374151] p-6 hover:border-[#4b5563] transition-all">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-gray-900">{agent.name}</h3>
-          <p className="text-sm text-gray-500">Agent</p>
+          <h3 className="font-semibold text-white">{agent.name}</h3>
+          <p className="text-sm text-gray-400">Agent</p>
         </div>
         <Badge variant={statusVariant}>{agent.status}</Badge>
       </div>
 
       <div className="space-y-3 text-sm">
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">Tasks Completed</span>
-          <span className="font-semibold">{agent.performance.tasksCompleted}</span>
+          <span className="text-gray-400">Tasks Completed</span>
+          <span className="font-semibold text-white">{agent.performance.tasksCompleted}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">Avg Speed</span>
-          <span className="font-semibold">{agent.performance.averageSpeed}h</span>
+          <span className="text-gray-400">Avg Speed</span>
+          <span className="font-semibold text-white">{agent.performance.averageSpeed}h</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">Uptime</span>
-          <span className="font-semibold">{agent.performance.uptime}%</span>
+          <span className="text-gray-400">Uptime</span>
+          <span className="font-semibold text-white">{agent.performance.uptime}%</span>
         </div>
         {agent.currentTask && (
-          <div className="pt-2 border-t border-gray-200">
+          <div className="pt-2 border-t border-[#374151]">
             <p className="text-xs text-gray-500 mb-1">Currently working on</p>
-            <div className="flex items-center gap-1 text-gray-700">
+            <div className="flex items-center gap-1 text-gray-300">
               <Activity size={14} />
               <span className="text-xs truncate">Task {agent.currentTask.substring(0, 8)}</span>
             </div>
