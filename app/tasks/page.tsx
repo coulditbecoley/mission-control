@@ -1,233 +1,315 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { SearchBar } from '@/components/SearchBar';
-import { TaskItem } from '@/components/TaskItem';
+import { useState, useEffect } from 'react';
+import { CheckSquare, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { useDashboardStore } from '@/lib/store';
-import { Task } from '@/lib/types';
-import { Plus } from 'lucide-react';
 
-const statusOptions: Task['status'][] = ['todo', 'in-progress', 'done', 'blocked'];
-const priorityOptions: Task['priority'][] = ['low', 'medium', 'high', 'urgent'];
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: 'todo' | 'in-progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  dueDate: string;
+  tags: string[];
+}
 
 export default function TasksPage() {
-  const { tasks, setTasks, searchQuery, updateMetrics } = useDashboardStore();
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filter, setFilter] = useState<Task['status'] | 'all'>('all');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 'medium' as Task['priority'],
-    status: 'todo' as Task['status'],
+    priority: 'medium' as const,
+    dueDate: '',
+    tags: '',
   });
+  const [loading, setLoading] = useState(true);
 
+  // Load tasks from API
   useEffect(() => {
-    fetch('/api/tasks')
-      .then((r) => r.json())
-      .then((data) => {
-        setTasks(data);
-        updateMetrics();
-      });
-  }, [setTasks, updateMetrics]);
-
-  const filteredTasks = tasks.filter((task) => {
-    if (filter !== 'all' && task.status !== filter) return false;
-    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    return true;
-  });
-
-  const handleCreateTask = async () => {
-    if (!formData.title.trim()) return;
-
-    const newTask = {
-      ...formData,
-      projectId: 'default',
-      tags: [],
+    const loadTasks = async () => {
+      try {
+        const response = await fetch('/api/tasks');
+        const data = await response.json();
+        setTasks(data.tasks || []);
+      } catch (error) {
+        console.error('Failed to load tasks:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const response = await fetch('/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newTask),
-    });
+    loadTasks();
+  }, []);
 
-    const createdTask = await response.json();
-    setTasks([...tasks, createdTask]);
-    updateMetrics();
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    setFormData({
-      title: '',
-      description: '',
-      priority: 'medium',
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: formData.title,
+      description: formData.description,
       status: 'todo',
-    });
-    setIsModalOpen(false);
+      priority: formData.priority,
+      dueDate: formData.dueDate,
+      tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
+    };
+
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', task: newTask }),
+      });
+
+      const data = await response.json();
+      setTasks(data.tasks);
+      setFormData({ title: '', description: '', priority: 'medium', dueDate: '', tags: '' });
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Failed to create task:', error);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: Task['status']) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          task: { ...task, status: newStatus },
+        }),
+      });
+
+      const data = await response.json();
+      setTasks(data.tasks);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
   };
 
   const handleDeleteTask = async (id: string) => {
-    await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-    setTasks(tasks.filter((t) => t.id !== id));
-    updateMetrics();
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', task: { id } }),
+      });
+
+      const data = await response.json();
+      setTasks(data.tasks);
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+    }
   };
 
-  const handleStatusChange = async (id: string, status: Task['status']) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-
-    await fetch(`/api/tasks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...task, status }),
-    });
-
-    setTasks(tasks.map((t) => (t.id === id ? { ...t, status } : t)));
-    updateMetrics();
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'text-red-400';
+      case 'medium':
+        return 'text-yellow-400';
+      case 'low':
+        return 'text-green-400';
+      default:
+        return 'text-gray-400';
+    }
   };
 
-  const tasksByStatus = statusOptions.map((status) => ({
-    status,
-    count: tasks.filter((t) => t.status === status).length,
-  }));
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'done':
+        return 'bg-emerald-900/40 text-emerald-300';
+      case 'in-progress':
+        return 'bg-blue-900/40 text-blue-300';
+      case 'todo':
+        return 'bg-gray-900/40 text-gray-300';
+      default:
+        return '';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-auto bg-[#0a0e27] flex items-center justify-center">
+        <p className="text-gray-400">Loading tasks...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8 bg-[#0a0e27] min-h-screen">
-      <div className="max-w-4xl mx-auto">
+    <div className="flex-1 overflow-auto bg-[#0a0e27]">
+      <div className="p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Tasks</h1>
-            <p className="text-gray-400">Manage and track all your tasks</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckSquare className="text-blue-400" size={32} />
+            <h1 className="text-4xl font-bold text-white">Tasks</h1>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
-            <Plus size={18} />
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus size={20} />
             New Task
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="mb-8 max-w-sm">
-          <SearchBar />
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          <Button
-            variant={filter === 'all' ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => setFilter('all')}
-          >
-            All ({tasks.length})
-          </Button>
-          {tasksByStatus.map(({ status, count }) => (
-            <Button
-              key={status}
-              variant={filter === status ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilter(status)}
-            >
-              {status} ({count})
-            </Button>
-          ))}
-        </div>
-
-        {/* Task List */}
+        {/* Tasks List */}
         <div className="space-y-3">
-          {filteredTasks.length > 0 ? (
-            filteredTasks.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onDelete={handleDeleteTask}
-                onStatusChange={handleStatusChange}
-              />
-            ))
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <p>No tasks found</p>
+          {tasks.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              No tasks yet. Create one to get started!
             </div>
+          ) : (
+            tasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-[#141829] rounded-lg border border-[#374151] p-4 hover:border-[#4b5563] transition-all"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={task.status === 'done'}
+                      onChange={(e) =>
+                        handleStatusChange(task.id, e.target.checked ? 'done' : 'todo')
+                      }
+                      className="mt-1 cursor-pointer accent-emerald-500"
+                    />
+                    <div className="flex-1">
+                      <h4
+                        className={`font-medium ${
+                          task.status === 'done'
+                            ? 'line-through text-gray-500'
+                            : 'text-white'
+                        }`}
+                      >
+                        {task.title}
+                      </h4>
+                      {task.description && (
+                        <p className="text-sm text-gray-400 mt-1">{task.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <span
+                          className={`text-xs px-2 py-1 rounded border ${getStatusColor(
+                            task.status
+                          )}`}
+                        >
+                          {task.status}
+                        </span>
+                        <span className={`text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        {task.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-xs bg-[#1a1f3a] text-gray-300 px-2 py-1 rounded"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {task.dueDate && (
+                      <span className="text-xs text-gray-500">{task.dueDate}</span>
+                    )}
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#1a1f3a] rounded transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
 
       {/* Create Task Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Task">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleCreateTask();
-          }}
-          className="space-y-4"
-        >
+        <form onSubmit={handleCreateTask} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Title</label>
+            <label className="block text-sm text-gray-300 mb-2">Task Title</label>
             <input
               type="text"
+              required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-              placeholder="Task title"
-              required
+              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="What needs to be done?"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+            <label className="block text-sm text-gray-300 mb-2">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
-              placeholder="Task description"
-              rows={3}
+              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
+              placeholder="Add details..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Priority</label>
+              <label className="block text-sm text-gray-300 mb-2">Priority</label>
               <select
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
-                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value as any })
+                }
+                className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {priorityOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </option>
-                ))}
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
-                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-              >
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm text-gray-300 mb-2">Due Date</label>
+              <input
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button type="submit" onClick={handleCreateTask} className="flex-1">
-              Create Task
-            </Button>
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">Tags (comma-separated)</label>
+            <input
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              className="w-full bg-[#1a1f3a] border border-[#374151] text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., urgent, dashboard, api"
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end">
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
               onClick={() => setIsModalOpen(false)}
-              className="flex-1"
             >
               Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Create Task
             </Button>
           </div>
         </form>
