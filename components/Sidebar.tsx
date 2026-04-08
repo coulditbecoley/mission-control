@@ -12,6 +12,8 @@ import {
   Calendar,
   FileText,
   Building2,
+  TrendingUp,
+  Bitcoin,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +28,12 @@ const navItems = [
   { href: '/docs', icon: FileText, label: 'Docs' },
   { href: '/knowledge', icon: BookOpen, label: 'Knowledge' },
   { href: '/activity', icon: Activity, label: 'Activity' },
+];
+
+const tradingItems = [
+  { href: '/trading/portfolio', icon: TrendingUp, label: 'Portfolio' },
+  { href: '/trading/bitcoin', icon: Bitcoin, label: 'Bitcoin' },
+  { href: '/trading/trades', icon: TrendingUp, label: 'Trades' },
 ];
 
 export function Sidebar() {
@@ -44,7 +52,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href;
           return (
@@ -63,6 +71,31 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Trading Category */}
+        <div className="mt-6 pt-4 border-t border-[#374151]">
+          <div className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Trading</div>
+          <div className="space-y-1">
+            {tradingItems.map(({ href, icon: Icon, label }) => {
+              const isActive = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-green-600 text-white'
+                      : 'text-gray-400 hover:bg-[#1a1f3a] hover:text-gray-200 active:bg-[#1f2438]',
+                  )}
+                >
+                  <Icon size={18} />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </nav>
 
       {/* Footer */}
