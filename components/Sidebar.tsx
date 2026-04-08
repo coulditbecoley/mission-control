@@ -11,6 +11,7 @@ import {
   Activity,
   Calendar,
   FileText,
+  Building2,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ const navItems = [
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/agents', icon: Zap, label: 'Agents' },
+  { href: '/office', icon: Building2, label: 'Office' },
   { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/docs', icon: FileText, label: 'Docs' },
   { href: '/knowledge', icon: BookOpen, label: 'Knowledge' },
