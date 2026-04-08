@@ -1,17 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 
 export default function OfficePage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
   const agents = [
     { name: 'Odin', color: 'bg-blue-500' },
     { name: 'Loki', color: 'bg-purple-500' },
