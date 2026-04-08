@@ -1,0 +1,30 @@
+name: Create Backup Before Changes
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create backup branch
+        run: |
+          git config user.name "Backup Bot"
+          git config user.email "backup@github.com"
+          
+          # Get current commit hash
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          BACKUP_BRANCH="backup/main_${TIMESTAMP}_${COMMIT_HASH}"
+          
+          # Create backup branch from current main
+          git checkout -b "$BACKUP_BRANCH"
+          git push origin "$BACKUP_BRANCH"
+          
+          echo "Backup created: $BACKUP_BRANCH"
