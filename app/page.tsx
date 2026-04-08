@@ -46,10 +46,11 @@ export default function Dashboard() {
     initDashboard();
   }, [updateMetrics]);
 
-  const recentActivity = activityLog.slice(0, 5);
-  const activeProjects = projects.filter((p) => p.status === 'active');
-  const completedTasks = tasks?.filter((t: any) => t.status === 'completed').length || 0;
-  const openTasks = tasks?.filter((t: any) => t.status !== 'completed').length || 0;
+  const recentActivity = (activityLog || []).slice(0, 5);
+  const activeProjects = (projects || []).filter((p) => p.status === 'active');
+  const completedTasks = (tasks || []).filter((t: any) => t.status === 'completed').length || 0;
+  const openTasks = (tasks || []).filter((t: any) => t.status !== 'completed').length || 0;
+  const agentCount = (agents || []).length || 0;
 
   if (loading) {
     return (
@@ -96,7 +97,7 @@ export default function Dashboard() {
           />
           <MetricCard
             label="Active Agents"
-            value={agents?.length || 0}
+            value={agentCount}
             icon={<Zap size={32} />}
           />
           <MetricCard
