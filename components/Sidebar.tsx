@@ -32,7 +32,7 @@ const navItems = [
 const tradingItems = [
   { href: '/trading/portfolio', icon: TrendingUp, label: 'Portfolio' },
   { href: '/trading/bitcoin', icon: Bitcoin, label: 'Bitcoin' },
-  { href: '/trading/trades', icon: TrendingUp, label: 'Trades' },
+  { href: '/trading/trades', icon: TrendingUp, label: 'Journal' },
 ];
 
 export function Sidebar() {
