@@ -16,36 +16,34 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Initialize data on first load
-    fetch('/api/init', { method: 'POST' }).then(() => {
-      // Load data from all sections
-      Promise.all([
-        fetch('/api/tasks').then((r) => r.json()),
-        fetch('/api/projects').then((r) => r.json()),
-        fetch('/api/agents').then((r) => r.json()),
-        fetch('/api/calendar').then((r) => r.json()).catch(() => ({ events: [] })),
-        fetch('/api/activity').then((r) => r.json()).catch(() => ({ logs: [] })),
-        fetch('/api/knowledge').then((r) => r.json()).catch(() => ({ documents: [] })),
-        fetch('/api/docs').then((r) => r.json()).catch(() => ({ docs: [] })),
-      ]).then(([tasksData, projectsData, agentsData, calendarData, activityData, knowledgeData, docsData]) => {
+    const initDashboard = async () => {
+      try {
+        await fetch('/api/init', { method: 'POST' });
+        
+        // Load core data
+        const tasksRes = await fetch('/api/tasks');
+        const projectsRes = await fetch('/api/projects');
+        const agentsRes = await fetch('/api/agents');
+        
+        const tasksData = tasksRes.ok ? await tasksRes.json() : [];
+        const projectsData = projectsRes.ok ? await projectsRes.json() : [];
+        const agentsData = agentsRes.ok ? await agentsRes.json() : [];
+        
         useDashboardStore.setState({
           tasks: tasksData,
           projects: projectsData,
           agents: agentsData,
         });
         
-        // Calculate summary data
-        setSummaryData({
-          calendar: calendarData?.events?.length || 0,
-          upcomingEvents: calendarData?.events?.filter((e: any) => new Date(e.date) > new Date()).length || 0,
-          recentActivity: activityData?.logs?.length || 0,
-          knowledge: knowledgeData?.documents?.length || 0,
-          docs: docsData?.docs?.length || 0,
-        });
-        
         updateMetrics();
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+      } finally {
         setLoading(false);
-      });
-    });
+      }
+    };
+    
+    initDashboard();
   }, [updateMetrics]);
 
   const recentActivity = activityLog.slice(0, 5);
