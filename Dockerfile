@@ -1,31 +1,24 @@
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-COPY package*.json ./
-
-RUN npm install
-
-COPY . .
-RUN npm run build
-
-# Ensure public directory exists
-RUN mkdir -p /app/public
-
 FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy dependencies
 COPY package*.json ./
 
-RUN npm install --production
+# Install dependencies
+RUN npm install
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/app ./app
+# Copy source code
+COPY . .
 
+# Build Next.js application
+RUN npm run build
+
+# Expose port
 EXPOSE 3000
 
+# Set environment
 ENV NODE_ENV=production
 
+# Start application
 CMD ["npm", "start"]
