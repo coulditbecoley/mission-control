@@ -9,6 +9,7 @@ import {
   Zap,
   BookOpen,
   Activity,
+  Calendar,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/projects', icon: FolderOpen, label: 'Projects' },
   { href: '/agents', icon: Zap, label: 'Agents' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/knowledge', icon: BookOpen, label: 'Knowledge' },
   { href: '/activity', icon: Activity, label: 'Activity' },
 ];
@@ -33,7 +35,7 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">⚡</span>
           </div>
-          <h1 className="text-lg font-bold text-white">OpenClaw</h1>
+          <h1 className="text-lg font-bold text-white">Asgard Dashboard</h1>
         </div>
       </div>
 
