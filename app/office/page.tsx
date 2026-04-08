@@ -352,11 +352,15 @@ export default function OfficePage() {
           </div>
         </div>
 
-        {/* Office Canvas with 80s carpet */}
+        {/* Office Canvas with herringbone wood floor */}
         <div className="flex-1 p-8 bg-auto overflow-auto" style={{
-          backgroundImage: `repeating-linear-gradient(45deg, #1a4d2e 0px, #1a4d2e 20px, #2d6b3f 20px, #2d6b3f 40px, #1a4d2e 40px, #1a4d2e 60px, #c41e3a 60px, #c41e3a 80px)`,
-          backgroundSize: '80px 80px',
-          backgroundPosition: '0 0'
+          backgroundImage: `
+            linear-gradient(90deg, #2a2a2a 0%, #2a2a2a 2%, #3a3a3a 2%, #3a3a3a 4%, #2a2a2a 4%, #2a2a2a 6%, #3a3a3a 6%, #3a3a3a 8%, #2a2a2a 8%, #2a2a2a 10%, #4a4a4a 10%, #4a4a4a 12%, #3a3a3a 12%, #3a3a3a 14%, #4a4a4a 14%, #4a4a4a 16%, #3a3a3a 16%, #3a3a3a 18%, #2a2a2a 18%, #2a2a2a 20%),
+            linear-gradient(90deg, #4a4a4a 0%, #4a4a4a 2%, #3a3a3a 2%, #3a3a3a 4%, #4a4a4a 4%, #4a4a4a 6%, #3a3a3a 6%, #3a3a3a 8%, #4a4a4a 8%, #4a4a4a 10%, #2a2a2a 10%, #2a2a2a 12%, #3a3a3a 12%, #3a3a3a 14%, #2a2a2a 14%, #2a2a2a 16%, #3a3a3a 16%, #3a3a3a 18%, #4a4a4a 18%, #4a4a4a 20%)
+          `,
+          backgroundSize: '40px 40px',
+          backgroundPosition: '0 0, 20px 20px',
+          backgroundColor: '#323232'
         }}>
           <div className="relative w-full min-w-max" style={{ minHeight: '600px' }}>
             {/* Work Stations Label */}
