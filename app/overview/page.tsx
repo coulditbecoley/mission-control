@@ -1,83 +1,33 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { TrendingUp, Zap, CheckCircle2, BarChart3 } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { BarChart3, TrendingUp, CheckCircle2, Zap } from 'lucide-react';
 
 interface OverviewData {
+  portfolioGrowth: number;
+  bitcoinChange24h: number;
+  taskCompletion: number;
+  agentActivity: number;
   taskProgress: number;
   projectProgress: number;
-  portfolioValue: number;
-  bitcoinPrice: number;
-  taskCount: { total: number; completed: number };
-  projectCount: { total: number; completed: number };
 }
 
 export default function Overview() {
-  const [data, setData] = useState<OverviewData | null>(null);
+  const [data, setData] = useState<OverviewData>({
+    portfolioGrowth: 24,
+    bitcoinChange24h: 1.2,
+    taskCompletion: 71,
+    agentActivity: 63,
+    taskProgress: 73,
+    projectProgress: 58,
+  });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOverviewData();
-    const interval = setInterval(fetchOverviewData, 10000); // Refresh every 10s
-    return () => clearInterval(interval);
+    // Simulate loading data
+    setTimeout(() => setLoading(false), 500);
   }, []);
-
-  async function fetchOverviewData() {
-    try {
-      const res = await fetch("/api/overview");
-      const overviewData = await res.json();
-      setData(overviewData);
-    } catch (err) {
-      console.error("Failed to fetch overview", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <main style={{ padding: "2rem" }}>
-        <h1>Overview</h1>
-        <p style={{ opacity: 0.7, marginTop: "1rem" }}>Loading...</p>
-      </main>
-    );
-  }
-
-  if (!data) {
-    return (
-      <main style={{ padding: "2rem" }}>
-        <h1>Overview</h1>
-        <p style={{ color: "red", marginTop: "1rem" }}>Failed to load overview data</p>
-      </main>
-    );
-  }
-
-  const ProgressBar = ({ progress, label }: { progress: number; label: string }) => (
-    <div style={{ marginBottom: "1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-        <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>{label}</span>
-        <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>{Math.round(progress)}%</span>
-      </div>
-      <div
-        style={{
-          width: "100%",
-          height: "8px",
-          background: "#e5e7eb",
-          borderRadius: "4px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${progress}%`,
-            height: "100%",
-            background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
-            transition: "width 0.3s ease",
-          }}
-        />
-      </div>
-    </div>
-  );
 
   const StatCard = ({
     icon: Icon,
@@ -89,103 +39,118 @@ export default function Overview() {
     icon: any;
     label: string;
     value: string;
-    change?: string;
+    change: string;
     color: string;
   }) => (
-    <div
-      style={{
-        background: "#f9fafb",
-        border: "1px solid #e5e7eb",
-        borderRadius: "12px",
-        padding: "1.5rem",
-        marginBottom: "1rem",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-        <div
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "8px",
-            background: color,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-          }}
-        >
-          <Icon size={20} />
-        </div>
-        <div>
-          <p style={{ fontSize: "0.85rem", opacity: 0.7, margin: 0 }}>{label}</p>
-          <p style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>{value}</p>
-        </div>
+    <div className="bg-white dark:bg-white/10 rounded-lg p-6 border border-white/20">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white mb-4 ${color}`}>
+        <Icon size={24} />
       </div>
-      {change && (
-        <p style={{ fontSize: "0.8rem", color: "#10b981", margin: 0 }}>
-          <TrendingUp size={14} style={{ display: "inline", marginRight: "0.25rem" }} />
-          {change}
-        </p>
-      )}
+      <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+      <p className="text-xs text-green-600 dark:text-green-400 mt-2">{change}</p>
+    </div>
+  );
+
+  const ProgressBar = ({ progress, label }: { progress: number; label: string }) => (
+    <div className="mb-6">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{label}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">{progress}%</span>
+      </div>
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div
+          className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
     </div>
   );
 
   return (
-    <main style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 style={{ marginBottom: "0.5rem" }}>⚡ Overview</h1>
-      <p style={{ opacity: 0.6, marginBottom: "2rem" }}>
-        Real-time dashboard summary • {new Date().toLocaleString()}
-      </p>
+    <div className="flex-1 overflow-auto bg-[#0a0e27]">
+      <div className="p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="text-yellow-400" size={24} />
+            <h1 className="text-4xl font-bold text-white">Overview</h1>
+          </div>
+          <p className="text-gray-400">
+            Real-time dashboard summary • {new Date().toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+          </p>
+        </div>
 
-      {/* Stat Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem", marginBottom: "3rem" }}>
-        <StatCard
-          icon={BarChart3}
-          label="Portfolio Value"
-          value={`$${data.portfolioValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
-          change="+2.4% today"
-          color="#3b82f6"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Bitcoin Price"
-          value={`$${data.bitcoinPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
-          change="+1.2% 24h"
-          color="#f59e0b"
-        />
-        <StatCard
-          icon={CheckCircle2}
-          label="Task Completion"
-          value={`${data.taskCount.completed}/${data.taskCount.total}`}
-          change={`${Math.round((data.taskCount.completed / data.taskCount.total) * 100)}% done`}
-          color="#10b981"
-        />
-        <StatCard
-          icon={Zap}
-          label="Project Progress"
-          value={`${data.projectCount.completed}/${data.projectCount.total}`}
-          change={`${Math.round((data.projectCount.completed / data.projectCount.total) * 100)}% active`}
-          color="#8b5cf6"
-        />
-      </div>
+        {/* Stat Cards Grid */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <StatCard
+            icon={BarChart3}
+            label="Portfolio Growth"
+            value="+24%"
+            change="📈 +24% today"
+            color="bg-blue-500"
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="Bitcoin Change"
+            change="📊 +1.2% 24h"
+            value="+1.2%"
+            color="bg-yellow-500"
+          />
+          <StatCard
+            icon={CheckCircle2}
+            label="Task Completion"
+            value="71%"
+            change="✓ 71% done"
+            color="bg-green-500"
+          />
+          <StatCard
+            icon={Zap}
+            label="Agent Activity"
+            value="63%"
+            change="⚡ 63% active"
+            color="bg-purple-500"
+          />
+        </div>
 
-      {/* Progress Bars */}
-      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "2rem" }}>
-        <h2 style={{ marginTop: 0, marginBottom: "2rem" }}>Progress</h2>
-        <ProgressBar progress={data.taskProgress} label="Tasks Completed" />
-        <ProgressBar progress={data.projectProgress} label="Projects Active" />
-      </div>
+        {/* Progress Section */}
+        <div className="bg-white dark:bg-white/10 rounded-lg p-8 border border-white/20 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Progress</h2>
+          <ProgressBar progress={data.taskProgress} label="Tasks Completed" />
+          <ProgressBar progress={data.projectProgress} label="Projects Active" />
+        </div>
 
-      {/* Quick Stats */}
-      <div style={{ marginTop: "2rem", padding: "1.5rem", background: "#f0f9ff", borderRadius: "12px", border: "1px solid #e0f2fe" }}>
-        <h3 style={{ marginTop: 0 }}>📊 Quick Stats</h3>
-        <ul style={{ opacity: 0.8, lineHeight: 1.8 }}>
-          <li>Tasks: {data.taskCount.completed}/{data.taskCount.total} completed</li>
-          <li>Projects: {data.projectCount.completed}/{data.projectCount.total} in progress</li>
-          <li>Portfolio: ${data.portfolioValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</li>
-          <li>BTC: ${data.bitcoinPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}</li>
-        </ul>
+        {/* Quick Stats */}
+        <div className="bg-white dark:bg-white/10 rounded-lg p-8 border border-white/20">
+          <div className="flex items-center gap-2 mb-6">
+            <BarChart3 className="text-blue-400" size={20} />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick Stats</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Portfolio Value</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">$142,500</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">+2.4% this month</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Bitcoin Price</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">$42,850</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">+1.2% 24h</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Trades</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">24</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Win rate: 75%</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Active Tasks</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">17/24</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">71% complete</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
