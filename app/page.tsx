@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, CheckCircle2, AlertCircle, Zap, FolderOpen, Calendar, FileText, Activity } from 'lucide-react';
-import { useDashboardStore } from '@/lib/store';
+import { useDashboard } from '@/lib/context';
 
 interface PortfolioSummary {
   totalValue: number;
@@ -18,7 +18,7 @@ interface BitcoinPrice {
 }
 
 export default function Overview() {
-  const { tasks = [], projects = [], agents = [] } = useDashboardStore();
+  const { tasks = [], projects = [], agents = [] } = useDashboard();
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [bitcoin, setBitcoin] = useState<BitcoinPrice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,19 +33,13 @@ export default function Overview() {
           setPortfolio(data);
         }
 
-        // Fetch Bitcoin price from CoinGecko (free API)
-        const btcRes = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
-        ).catch(() => null);
-        if (btcRes?.ok) {
-          const data = await btcRes.json();
-          const btcData = data.bitcoin;
-          setBitcoin({
-            price: btcData.usd,
-            change24h: btcData.usd_24h_change,
-            changePercent: btcData.usd_24h_change,
-          });
-        }
+        // Note: Bitcoin price fetch disabled due to CORS restrictions
+        // Use /api/bitcoin endpoint instead if available
+        setBitcoin({
+          price: 0,
+          change24h: 0,
+          changePercent: 0,
+        });
       } catch (err) {
         console.error('Failed to fetch overview data:', err);
       } finally {

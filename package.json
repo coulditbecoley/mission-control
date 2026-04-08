@@ -10,14 +10,10 @@
   },
   "dependencies": {
     "clsx": "^2.0.0",
-    "crypto-browserify": "^3.12.1",
     "lucide-react": "^0.263.1",
     "next": "^15.0.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "stream-browserify": "^3.0.0",
-    "util": "^0.12.5",
-    "zustand": "^4.4.0"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
