@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, Plus, X, Trash2 } from 'lucide-react';
+import { TrendingUp, Plus, X, Trash2, DollarSign } from 'lucide-react';
+
+interface Deposit {
+  id: string;
+  date: string;
+  amount: number;
+  notes: string;
+}
 
 interface Trade {
   id: string;
@@ -18,6 +25,7 @@ interface Trade {
 }
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
+type EntryType = 'trade' | 'deposit';
 
 const calculatePnL = (type: string, entryPrice: number, exitPrice: number, quantity: number) => {
   const priceDiff = exitPrice - entryPrice;
@@ -34,56 +42,67 @@ const generateId = () => {
   });
 };
 
-const buildChartData = (trades: Trade[], timeframe: Timeframe) => {
-  const startBalance = 100000;
-  let balance = startBalance;
-  const data: Array<{ date: string; balance: number; pnl: number }> = [];
+const buildChartData = (deposits: Deposit[], trades: Trade[], timeframe: Timeframe) => {
+  let balance = 0;
+  const data: Array<{ date: string; balance: number; change: number }> = [];
 
-  // Sort trades by date
-  const sortedTrades = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // Combine and sort all entries by date
+  const allEntries = [
+    ...deposits.map((d) => ({ ...d, type: 'deposit' as const })),
+    ...trades.map((t) => ({ ...t, type: 'trade' as const })),
+  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Group by timeframe
-  const grouped: { [key: string]: Trade[] } = {};
+  const grouped: { [key: string]: typeof allEntries } = {};
 
-  sortedTrades.forEach((trade) => {
-    let key = trade.date;
+  allEntries.forEach((entry) => {
+    let key = entry.date;
 
     if (timeframe === 'weekly') {
-      const date = new Date(trade.date);
+      const date = new Date(entry.date);
       const startOfWeek = new Date(date.setDate(date.getDate() - date.getDay()));
       key = startOfWeek.toISOString().split('T')[0];
     } else if (timeframe === 'monthly') {
-      key = trade.date.substring(0, 7); // YYYY-MM
+      key = entry.date.substring(0, 7);
     } else if (timeframe === 'yearly') {
-      key = trade.date.substring(0, 4); // YYYY
+      key = entry.date.substring(0, 4);
     }
 
     if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(trade);
+    grouped[key].push(entry);
   });
 
   // Calculate cumulative balance
   Object.keys(grouped)
     .sort()
     .forEach((key) => {
-      const periodPnL = grouped[key].reduce((sum, t) => sum + t.pnl, 0);
-      balance += periodPnL;
+      let periodChange = 0;
+      grouped[key].forEach((entry) => {
+        if (entry.type === 'deposit') {
+          periodChange += entry.amount;
+        } else {
+          periodChange += entry.pnl;
+        }
+      });
+      balance += periodChange;
       data.push({
         date: key,
         balance: Math.round(balance),
-        pnl: periodPnL,
+        change: periodChange,
       });
     });
 
   return {
     data,
-    startBalance,
+    startBalance: 0,
     totalBalance: balance,
-    totalPnL: balance - startBalance,
+    totalDeposits: deposits.reduce((sum, d) => sum + d.amount, 0),
+    totalPnL: trades.reduce((sum, t) => sum + t.pnl, 0),
   };
 };
 
 export default function JournalPage() {
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [trades, setTrades] = useState<Trade[]>([
     {
       id: '1',
@@ -114,8 +133,11 @@ export default function JournalPage() {
   ]);
 
   const [timeframe, setTimeframe] = useState<Timeframe>('daily');
+  const [activeTab, setActiveTab] = useState<EntryType>('trade');
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
+  const [modalType, setModalType] = useState<EntryType>('trade');
+
+  const [tradeForm, setTradeForm] = useState({
     date: new Date().toISOString().split('T')[0],
     asset: 'BTC',
     type: 'long' as 'long' | 'short',
@@ -125,34 +147,40 @@ export default function JournalPage() {
     notes: '',
   });
 
+  const [depositForm, setDepositForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    amount: '',
+    notes: '',
+  });
+
   const handleAddTrade = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const entryPrice = parseFloat(formData.entryPrice);
-    const exitPrice = parseFloat(formData.exitPrice);
-    const quantity = parseFloat(formData.quantity);
+    const entryPrice = parseFloat(tradeForm.entryPrice);
+    const exitPrice = parseFloat(tradeForm.exitPrice);
+    const quantity = parseFloat(tradeForm.quantity);
 
     if (!entryPrice || !exitPrice || !quantity) return;
 
-    const { pnl, pnlPercent } = calculatePnL(formData.type, entryPrice, exitPrice, quantity);
+    const { pnl, pnlPercent } = calculatePnL(tradeForm.type, entryPrice, exitPrice, quantity);
 
     const newTrade: Trade = {
       id: generateId(),
-      date: formData.date,
-      asset: formData.asset,
-      type: formData.type,
+      date: tradeForm.date,
+      asset: tradeForm.asset,
+      type: tradeForm.type,
       entryPrice,
       exitPrice,
       quantity,
       pnl,
       pnlPercent,
       status: pnl >= 0 ? 'win' : 'loss',
-      notes: formData.notes,
+      notes: tradeForm.notes,
     };
 
     setTrades([newTrade, ...trades]);
     setShowModal(false);
-    setFormData({
+    setTradeForm({
       date: new Date().toISOString().split('T')[0],
       asset: 'BTC',
       type: 'long',
@@ -163,19 +191,46 @@ export default function JournalPage() {
     });
   };
 
+  const handleAddDeposit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const amount = parseFloat(depositForm.amount);
+    if (!amount || amount <= 0) return;
+
+    const newDeposit: Deposit = {
+      id: generateId(),
+      date: depositForm.date,
+      amount,
+      notes: depositForm.notes,
+    };
+
+    setDeposits([newDeposit, ...deposits]);
+    setShowModal(false);
+    setDepositForm({
+      date: new Date().toISOString().split('T')[0],
+      amount: '',
+      notes: '',
+    });
+  };
+
   const handleDeleteTrade = (id: string) => {
     setTrades(trades.filter((t) => t.id !== id));
+  };
+
+  const handleDeleteDeposit = (id: string) => {
+    setDeposits(deposits.filter((d) => d.id !== id));
   };
 
   const totalWins = trades.filter((t) => t.status === 'win').length;
   const totalLosses = trades.filter((t) => t.status === 'loss').length;
   const winRate = trades.length > 0 ? (totalWins / trades.length) * 100 : 0;
-  const totalPnL = trades.reduce((sum, t) => sum + t.pnl, 0);
+  const totalTradePnL = trades.reduce((sum, t) => sum + t.pnl, 0);
 
-  const chartData = buildChartData(trades, timeframe);
-  const maxBalance = Math.max(...chartData.data.map((d) => d.balance), chartData.startBalance);
-  const minBalance = Math.min(...chartData.data.map((d) => d.balance), chartData.startBalance);
-  const range = maxBalance - minBalance;
+  const chartData = buildChartData(deposits, trades, timeframe);
+
+  const maxBalance = Math.max(...chartData.data.map((d) => d.balance), 0);
+  const minBalance = Math.min(...chartData.data.map((d) => d.balance), 0);
+  const range = maxBalance - minBalance || 1;
 
   return (
     <div className="flex-1 overflow-auto bg-[#0a0e27]">
@@ -188,14 +243,17 @@ export default function JournalPage() {
               <h1 className="text-4xl font-bold text-white">Journal</h1>
             </div>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setModalType('trade');
+                setShowModal(true);
+              }}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
             >
               <Plus size={18} />
               New Trade
             </button>
           </div>
-          <p className="text-gray-400">Manual trade journal - track and analyze your trades</p>
+          <p className="text-gray-400">Manual trade journal - track deposits and analyze your trades</p>
         </div>
 
         {/* P&L Chart Section */}
@@ -243,7 +301,7 @@ export default function JournalPage() {
                     points={chartData.data
                       .map((d, i) => {
                         const x = (i / (chartData.data.length - 1)) * 100;
-                        const normalizedBalance = (d.balance - minBalance) / (range || 1);
+                        const normalizedBalance = (d.balance - minBalance) / range;
                         const y = 200 - normalizedBalance * 200;
                         return `${x}%,${y}`;
                       })
@@ -256,7 +314,7 @@ export default function JournalPage() {
                   {/* Data points */}
                   {chartData.data.map((d, i) => {
                     const x = (i / (chartData.data.length - 1)) * 100;
-                    const normalizedBalance = (d.balance - minBalance) / (range || 1);
+                    const normalizedBalance = (d.balance - minBalance) / range;
                     const y = 200 - normalizedBalance * 200;
                     return (
                       <circle
@@ -264,7 +322,7 @@ export default function JournalPage() {
                         cx={`${x}%`}
                         cy={y}
                         r="4"
-                        fill={d.pnl >= 0 ? '#10b981' : '#ef4444'}
+                        fill={d.change >= 0 ? '#10b981' : '#ef4444'}
                         opacity="0.8"
                       />
                     );
@@ -272,7 +330,7 @@ export default function JournalPage() {
                 </>
               ) : (
                 <text x="50%" y="100" textAnchor="middle" fill="#6b7280" fontSize="14">
-                  No trades yet
+                  No entries yet
                 </text>
               )}
             </svg>
@@ -280,8 +338,8 @@ export default function JournalPage() {
             {/* Chart Labels */}
             <div className="grid grid-cols-4 gap-4 text-xs text-gray-400">
               <div>
-                <p className="text-gray-500 mb-1">Starting Balance</p>
-                <p className="text-white font-semibold">${chartData.startBalance.toLocaleString()}</p>
+                <p className="text-gray-500 mb-1">Total Deposits</p>
+                <p className="text-white font-semibold">${chartData.totalDeposits.toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-gray-500 mb-1">Total P&L</p>
@@ -296,7 +354,10 @@ export default function JournalPage() {
               <div>
                 <p className="text-gray-500 mb-1">Return %</p>
                 <p className={`font-semibold ${chartData.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {((chartData.totalPnL / chartData.startBalance) * 100).toFixed(2)}%
+                  {chartData.totalDeposits > 0
+                    ? ((chartData.totalPnL / chartData.totalDeposits) * 100).toFixed(2)
+                    : '0'}
+                  %
                 </p>
               </div>
             </div>
@@ -307,8 +368,8 @@ export default function JournalPage() {
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-[#141829] border border-[#374151] rounded-lg p-4">
             <p className="text-gray-400 text-sm mb-2">Total P&L</p>
-            <p className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              ${totalPnL.toLocaleString()}
+            <p className={`text-2xl font-bold ${totalTradePnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              ${totalTradePnL.toLocaleString()}
             </p>
           </div>
           <div className="bg-[#141829] border border-[#374151] rounded-lg p-4">
@@ -324,190 +385,348 @@ export default function JournalPage() {
           </div>
         </div>
 
-        {/* Trades List */}
+        {/* Entries Tabs & List */}
         <div className="bg-[#141829] border border-[#374151] rounded-lg overflow-hidden">
-          <div className="p-6 border-b border-[#374151]">
-            <h2 className="text-xl font-bold text-white">Recent Trades</h2>
+          {/* Tabs */}
+          <div className="flex border-b border-[#374151]">
+            <button
+              onClick={() => setActiveTab('trade')}
+              className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'trade'
+                  ? 'bg-[#1a1f3a] text-white border-b-2 border-blue-500'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Trades ({trades.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('deposit')}
+              className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'deposit'
+                  ? 'bg-[#1a1f3a] text-white border-b-2 border-green-500'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Deposits ({deposits.length})
+            </button>
           </div>
 
-          <div className="divide-y divide-[#374151]">
-            {trades.map((trade) => (
-              <div key={trade.id} className="p-6 hover:bg-[#1a1f3a] transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="grid grid-cols-7 gap-4 flex-1">
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Date</p>
-                      <p className="text-white font-semibold">{trade.date}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Asset</p>
-                      <p className="text-white font-semibold">{trade.asset}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Type</p>
-                      <p
-                        className={`font-semibold ${trade.type === 'long' ? 'text-green-400' : 'text-red-400'}`}
+          {/* Trades Tab */}
+          {activeTab === 'trade' && (
+            <div className="divide-y divide-[#374151]">
+              {trades.length === 0 ? (
+                <div className="p-6 text-center text-gray-400">No trades yet</div>
+              ) : (
+                trades.map((trade) => (
+                  <div key={trade.id} className="p-6 hover:bg-[#1a1f3a] transition-colors">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="grid grid-cols-7 gap-4 flex-1">
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Date</p>
+                          <p className="text-white font-semibold">{trade.date}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Asset</p>
+                          <p className="text-white font-semibold">{trade.asset}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Type</p>
+                          <p
+                            className={`font-semibold ${trade.type === 'long' ? 'text-green-400' : 'text-red-400'}`}
+                          >
+                            {trade.type.toUpperCase()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Entry → Exit</p>
+                          <p className="text-white font-semibold">
+                            ${trade.entryPrice} → ${trade.exitPrice}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Qty</p>
+                          <p className="text-white font-semibold">{trade.quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">P&L</p>
+                          <p
+                            className={`font-semibold ${trade.status === 'win' ? 'text-green-400' : 'text-red-400'}`}
+                          >
+                            {trade.status === 'win' ? '+' : ''}{trade.pnl.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Status</p>
+                          <p
+                            className={`font-semibold ${trade.status === 'win' ? 'text-green-400' : 'text-red-400'}`}
+                          >
+                            {trade.status === 'win' ? '✓ Win' : '✗ Loss'} ({trade.pnlPercent}%)
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTrade(trade.id)}
+                        className="ml-4 p-2 text-gray-500 hover:text-red-400 hover:bg-[#0a0e27] rounded transition-colors flex-shrink-0"
                       >
-                        {trade.type.toUpperCase()}
-                      </p>
+                        <Trash2 size={18} />
+                      </button>
                     </div>
                     <div>
-                      <p className="text-gray-400 text-xs mb-1">Entry → Exit</p>
-                      <p className="text-white font-semibold">
-                        ${trade.entryPrice} → ${trade.exitPrice}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Qty</p>
-                      <p className="text-white font-semibold">{trade.quantity}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">P&L</p>
-                      <p
-                        className={`font-semibold ${trade.status === 'win' ? 'text-green-400' : 'text-red-400'}`}
-                      >
-                        {trade.status === 'win' ? '+' : ''}{trade.pnl.toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Status</p>
-                      <p
-                        className={`font-semibold ${trade.status === 'win' ? 'text-green-400' : 'text-red-400'}`}
-                      >
-                        {trade.status === 'win' ? '✓ Win' : '✗ Loss'} ({trade.pnlPercent}%)
-                      </p>
+                      <p className="text-gray-400 text-xs mb-1">Notes</p>
+                      <p className="text-gray-300 text-sm">{trade.notes}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteTrade(trade.id)}
-                    className="ml-4 p-2 text-gray-500 hover:text-red-400 hover:bg-[#0a0e27] rounded transition-colors flex-shrink-0"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Deposits Tab */}
+          {activeTab === 'deposit' && (
+            <div className="divide-y divide-[#374151]">
+              {deposits.length === 0 ? (
+                <div className="p-6 text-center text-gray-400">
+                  No deposits yet. Add your initial deposit to get started.
                 </div>
-                <div>
-                  <p className="text-gray-400 text-xs mb-1">Notes</p>
-                  <p className="text-gray-300 text-sm">{trade.notes}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                deposits.map((deposit) => (
+                  <div key={deposit.id} className="p-6 hover:bg-[#1a1f3a] transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="grid grid-cols-3 gap-4 mb-3">
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">Date</p>
+                            <p className="text-white font-semibold">{deposit.date}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">Amount</p>
+                            <p className="text-green-400 font-semibold text-lg">
+                              +${deposit.amount.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">Type</p>
+                            <p className="text-white font-semibold">Deposit</p>
+                          </div>
+                        </div>
+                        {deposit.notes && (
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">Notes</p>
+                            <p className="text-gray-300 text-sm">{deposit.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteDeposit(deposit.id)}
+                        className="ml-4 p-2 text-gray-500 hover:text-red-400 hover:bg-[#0a0e27] rounded transition-colors flex-shrink-0"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
-        {/* New Trade Modal */}
+        {/* Add Entry Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-[#141829] border border-[#374151] rounded-lg p-8 w-full max-w-md">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">New Trade</h2>
+                <div className="flex items-center gap-2">
+                  {modalType === 'deposit' ? (
+                    <>
+                      <DollarSign size={24} className="text-green-400" />
+                      <h2 className="text-2xl font-bold text-white">Add Deposit</h2>
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp size={24} className="text-blue-400" />
+                      <h2 className="text-2xl font-bold text-white">New Trade</h2>
+                    </>
+                  )}
+                </div>
                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
                   <X size={24} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddTrade} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              {/* Deposit Form */}
+              {modalType === 'deposit' && (
+                <form onSubmit={handleAddDeposit} className="space-y-4">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">Date</label>
                     <input
                       type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      value={depositForm.date}
+                      onChange={(e) => setDepositForm({ ...depositForm, date: e.target.value })}
                       className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Asset</label>
-                    <input
-                      type="text"
-                      value={formData.asset}
-                      onChange={(e) => setFormData({ ...formData, asset: e.target.value.toUpperCase() })}
-                      className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
-                      placeholder="BTC"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Type</label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as 'long' | 'short' })}
+                    <label className="block text-sm text-gray-400 mb-1">Amount ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={depositForm.amount}
+                      onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
                       className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                      placeholder="10000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Notes</label>
+                    <textarea
+                      value={depositForm.notes}
+                      onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
+                      className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm resize-none"
+                      rows={3}
+                      placeholder="e.g., Initial capital"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
                     >
-                      <option value="long">Long</option>
-                      <option value="short">Short</option>
-                    </select>
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors font-semibold"
+                    >
+                      Add Deposit
+                    </button>
                   </div>
+                </form>
+              )}
+
+              {/* Trade Form */}
+              {modalType === 'trade' && (
+                <form onSubmit={handleAddTrade} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Date</label>
+                      <input
+                        type="date"
+                        value={tradeForm.date}
+                        onChange={(e) => setTradeForm({ ...tradeForm, date: e.target.value })}
+                        className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Asset</label>
+                      <input
+                        type="text"
+                        value={tradeForm.asset}
+                        onChange={(e) => setTradeForm({ ...tradeForm, asset: e.target.value.toUpperCase() })}
+                        className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                        placeholder="BTC"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Type</label>
+                      <select
+                        value={tradeForm.type}
+                        onChange={(e) => setTradeForm({ ...tradeForm, type: e.target.value as 'long' | 'short' })}
+                        className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                      >
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        step="0.00001"
+                        value={tradeForm.quantity}
+                        onChange={(e) => setTradeForm({ ...tradeForm, quantity: e.target.value })}
+                        className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                        placeholder="1.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Entry Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={tradeForm.entryPrice}
+                        onChange={(e) => setTradeForm({ ...tradeForm, entryPrice: e.target.value })}
+                        className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                        placeholder="42500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Exit Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={tradeForm.exitPrice}
+                        onChange={(e) => setTradeForm({ ...tradeForm, exitPrice: e.target.value })}
+                        className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
+                        placeholder="45200"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Quantity</label>
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
-                      placeholder="1.5"
+                    <label className="block text-sm text-gray-400 mb-1">Notes</label>
+                    <textarea
+                      value={tradeForm.notes}
+                      onChange={(e) => setTradeForm({ ...tradeForm, notes: e.target.value })}
+                      className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm resize-none"
+                      rows={3}
+                      placeholder="Trade notes..."
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Entry Price</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.entryPrice}
-                      onChange={(e) => setFormData({ ...formData, entryPrice: e.target.value })}
-                      className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
-                      placeholder="42500"
-                    />
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors font-semibold"
+                    >
+                      Add Trade
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Exit Price</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.exitPrice}
-                      onChange={(e) => setFormData({ ...formData, exitPrice: e.target.value })}
-                      className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm"
-                      placeholder="45200"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Notes</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full bg-[#0a0e27] border border-[#374151] rounded px-3 py-2 text-white text-sm resize-none"
-                    rows={3}
-                    placeholder="Trade notes..."
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors font-semibold"
-                  >
-                    Add Trade
-                  </button>
-                </div>
-              </form>
+                </form>
+              )}
             </div>
           </div>
         )}
+
+        {/* Add Deposit Button (Quick Access) */}
+        <div className="mt-8">
+          <button
+            onClick={() => {
+              setModalType('deposit');
+              setShowModal(true);
+            }}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            <DollarSign size={20} />
+            Add Initial Deposit
+          </button>
+        </div>
       </div>
     </div>
   );
