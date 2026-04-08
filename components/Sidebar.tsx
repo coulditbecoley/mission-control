@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Bitcoin,
   BarChart3,
+  Terminal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,10 @@ const tradingItems = [
   { href: '/trading/portfolio', icon: TrendingUp, label: 'Portfolio' },
   { href: '/trading/bitcoin', icon: Bitcoin, label: 'Bitcoin' },
   { href: '/trading/trades', icon: TrendingUp, label: 'Journal' },
+];
+
+const systemItems = [
+  { href: '/logs', icon: Terminal, label: 'Logs' },
 ];
 
 export function Sidebar() {
@@ -83,6 +88,31 @@ export function Sidebar() {
                     'flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                     isActive
                       ? 'bg-green-600 text-white'
+                      : 'text-gray-400 hover:bg-[#1a1f3a] hover:text-gray-200 active:bg-[#1f2438]',
+                  )}
+                >
+                  <Icon size={18} />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* System Category */}
+        <div className="mt-6 pt-4 border-t border-[#374151]">
+          <div className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">System</div>
+          <div className="space-y-1">
+            {systemItems.map(({ href, icon: Icon, label }) => {
+              const isActive = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-purple-600 text-white'
                       : 'text-gray-400 hover:bg-[#1a1f3a] hover:text-gray-200 active:bg-[#1f2438]',
                   )}
                 >
