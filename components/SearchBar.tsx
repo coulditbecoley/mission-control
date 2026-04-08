@@ -1,10 +1,10 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import { useDashboardStore } from '@/lib/store';
+import { useState } from 'react';
 
 export function SearchBar() {
-  const { searchQuery, setSearchQuery } = useDashboardStore();
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <div className="relative">
