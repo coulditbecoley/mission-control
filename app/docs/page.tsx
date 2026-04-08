@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { FileText, Search, Plus, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Search, Plus, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface DocEntry {
@@ -12,7 +12,7 @@ interface DocEntry {
   preview: string;
 }
 
-const MOCK_DOCS: DocEntry[] = [
+const DEFAULT_DOCS: DocEntry[] = [
   {
     id: '1',
     date: '2026-04-08',
@@ -54,8 +54,41 @@ export default function DocsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'daily' | 'notes'>('all');
   const [selectedDoc, setSelectedDoc] = useState<DocEntry | null>(null);
+  const [docs, setDocs] = useState<DocEntry[]>(DEFAULT_DOCS);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filteredDocs = MOCK_DOCS.filter((doc) => {
+  // Load docs from API on mount
+  useEffect(() => {
+    const loadDocs = async () => {
+      try {
+        const response = await fetch('/api/docs');
+        if (response.ok) {
+          const data = await response.json();
+          setDocs(data.docs || DEFAULT_DOCS);
+        }
+      } catch (error) {
+        console.error('Failed to load docs:', error);
+      }
+    };
+    loadDocs();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await fetch('/api/docs/sync', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        setDocs(data.docs || DEFAULT_DOCS);
+      }
+    } catch (error) {
+      console.error('Failed to sync docs:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const filteredDocs = docs.filter((doc) => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          doc.preview.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
@@ -90,8 +123,20 @@ export default function DocsPage() {
             </div>
           </div>
 
+          {/* Refresh Button */}
+          <div className="px-4 pt-3 pb-2">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#1a1f3a] border border-[#374151] text-gray-300 hover:text-white hover:border-[#4b5563] rounded text-sm transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? 'Syncing...' : 'Sync Notes'}
+            </button>
+          </div>
+
           {/* Filter Tabs */}
-          <div className="px-4 pt-4 pb-3 border-b border-[#374151] flex gap-2">
+          <div className="px-4 pt-3 pb-3 border-b border-[#374151] flex gap-2">
             {[
               { id: 'all', label: 'All' },
               { id: 'daily', label: 'Daily' },
