@@ -58,81 +58,9 @@ async function writeSettings(settings: Settings): Promise<void> {
   }
 }
 
-async function testPhemexConnection(apiKey: string, apiSecret: string): Promise<Response> {
-  const https = await import('https');
-  const crypto = await import('crypto');
-
-  const expiry = Math.floor(Date.now() / 1000) + 60;
-  const message = `GET/v1/positions${expiry}`;
-  const signature = crypto
-    .createHmac('sha256', apiSecret)
-    .update(message)
-    .digest('hex');
-
-  return new Promise((resolve) => {
-    const options = {
-      hostname: 'api.phemex.com',
-      port: 443,
-      path: '/v1/positions',
-      method: 'GET',
-      headers: {
-        'x-phemex-access-token': apiKey,
-        'x-phemex-request-expiry': expiry.toString(),
-        'x-phemex-request-signature': signature,
-      },
-      timeout: 5000,
-    };
-
-    const req = https.request(options, (res: any) => {
-      let data = '';
-      res.on('data', (chunk: any) => {
-        data += chunk;
-      });
-      res.on('end', () => {
-        try {
-          const response = JSON.parse(data);
-          if (response.code === 0 || response.data) {
-            resolve(
-              Response.json({
-                success: true,
-                message: 'Phemex API connection successful!',
-              })
-            );
-          } else {
-            resolve(
-              Response.json({
-                success: false,
-                message: `Phemex error: ${response.msg || 'Unknown error'}`,
-              })
-            );
-          }
-        } catch (e) {
-          resolve(
-            Response.json({
-              success: false,
-              message: 'Invalid response from Phemex API',
-            })
-          );
-        }
-      });
-    });
-
-    req.on('error', (error: any) => {
-      resolve(
-        Response.json({
-          success: false,
-          message: `Connection error: ${error.message}`,
-        })
-      );
-    });
-
-    req.end();
-  });
-}
-
 export async function GET() {
   const settings = await readSettings();
-
+  
   // Don't expose full API secret in response - return masked version
   return Response.json({
     settings: {
@@ -146,7 +74,7 @@ export async function GET() {
   });
 }
 
-export async function POST(request: Request): Promise<Response> {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { action, settings: newSettings } = body;
@@ -169,11 +97,80 @@ export async function POST(request: Request): Promise<Response> {
         ...newSettings.trading,
       };
     } else if (action === 'test-phemex') {
-      return await testPhemexConnection(newSettings.phemex.apiKey, newSettings.phemex.apiSecret);
+      // Test Phemex connection
+      const https = require('https');
+      const crypto = require('crypto');
+
+      const expiry = Math.floor(Date.now() / 1000) + 60;
+      const message = `GET/v1/positions${expiry}`;
+      const signature = crypto
+        .createHmac('sha256', newSettings.phemex.apiSecret)
+        .update(message)
+        .digest('hex');
+
+      return new Promise((resolve) => {
+        const options = {
+          hostname: 'api.phemex.com',
+          port: 443,
+          path: '/v1/positions',
+          method: 'GET',
+          headers: {
+            'x-phemex-access-token': newSettings.phemex.apiKey,
+            'x-phemex-request-expiry': expiry.toString(),
+            'x-phemex-request-signature': signature,
+          },
+          timeout: 5000,
+        };
+
+        const req = https.request(options, (res: any) => {
+          let data = '';
+          res.on('data', (chunk: any) => {
+            data += chunk;
+          });
+          res.on('end', () => {
+            try {
+              const response = JSON.parse(data);
+              if (response.code === 0 || response.data) {
+                resolve(
+                  Response.json({
+                    success: true,
+                    message: 'Phemex API connection successful!',
+                  })
+                );
+              } else {
+                resolve(
+                  Response.json({
+                    success: false,
+                    message: `Phemex error: ${response.msg || 'Unknown error'}`,
+                  })
+                );
+              }
+            } catch (e) {
+              resolve(
+                Response.json({
+                  success: false,
+                  message: 'Invalid response from Phemex API',
+                })
+              );
+            }
+          });
+        });
+
+        req.on('error', (error: any) => {
+          resolve(
+            Response.json({
+              success: false,
+              message: `Connection error: ${error.message}`,
+            })
+          );
+        });
+
+        req.end();
+      });
     }
 
     await writeSettings(settings);
-
+    
     return Response.json({
       success: true,
       settings: {
