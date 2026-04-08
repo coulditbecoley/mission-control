@@ -14,21 +14,21 @@ interface TaskItemProps {
 
 export function TaskItem({ task, onEdit, onDelete, onStatusChange }: TaskItemProps) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div className="bg-[#141829] rounded-lg border border-[#374151] p-4 hover:border-[#4b5563] transition-all">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 flex-1">
           <input
             type="checkbox"
             checked={task.status === 'done'}
             onChange={(e) => onStatusChange?.(task.id, e.target.checked ? 'done' : 'todo')}
-            className="mt-1 cursor-pointer"
+            className="mt-1 cursor-pointer accent-emerald-500"
           />
           <div className="flex-1">
-            <h4 className={`font-medium ${task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+            <h4 className={`font-medium ${task.status === 'done' ? 'line-through text-gray-500' : 'text-white'}`}>
               {task.title}
             </h4>
             {task.description && (
-              <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+              <p className="text-sm text-gray-400 mt-1">{task.description}</p>
             )}
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <Badge variant="secondary">{task.status}</Badge>
@@ -54,13 +54,13 @@ export function TaskItem({ task, onEdit, onDelete, onStatusChange }: TaskItemPro
           )}
           <button
             onClick={() => onEdit?.(task)}
-            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 text-gray-500 hover:text-gray-300 hover:bg-[#1a1f3a] rounded transition-colors"
           >
             <Edit2 size={16} />
           </button>
           <button
             onClick={() => onDelete?.(task.id)}
-            className="p-1.5 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#1a1f3a] rounded transition-colors"
           >
             <Trash2 size={16} />
           </button>
