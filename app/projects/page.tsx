@@ -75,13 +75,13 @@ export default function ProjectsPage() {
   }));
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-[#0a0e27] min-h-screen">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Projects</h1>
-            <p className="text-gray-600">View and manage all projects</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Projects</h1>
+            <p className="text-gray-400">View and manage all projects</p>
           </div>
           <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
             <Plus size={18} />
@@ -143,23 +143,23 @@ export default function ProjectsPage() {
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Project Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               placeholder="Project name"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
               placeholder="Project description"
               rows={3}
             />
@@ -167,11 +167,11 @@ export default function ProjectsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as Project['status'] })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               >
                 {statuses.map((s) => (
                   <option key={s} value={s}>
@@ -182,11 +182,11 @@ export default function ProjectsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Color</label>
               <select
                 value={formData.color}
                 onChange={(e) => setFormData({ ...formData, color: e.target.value as typeof colors[0] })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               >
                 {colors.map((c) => (
                   <option key={c} value={c}>

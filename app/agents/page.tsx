@@ -19,17 +19,17 @@ export default function AgentsPage() {
   const offlineAgents = agents.filter((a) => a.status === 'offline');
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-[#0a0e27] min-h-screen">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Agents</h1>
-          <p className="text-gray-600">Monitor and manage all agents</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Agents</h1>
+          <p className="text-gray-400">Monitor and manage all agents</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="bg-[#141829] rounded-lg border border-[#374151] p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Agents</p>
@@ -38,7 +38,7 @@ export default function AgentsPage() {
               <Zap className="text-green-500 opacity-30" size={32} />
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="bg-[#141829] rounded-lg border border-[#374151] p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active</p>
@@ -47,7 +47,7 @@ export default function AgentsPage() {
               <div className="w-3 h-3 bg-green-500 rounded-full opacity-30" style={{ width: '32px', height: '32px' }}></div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="bg-[#141829] rounded-lg border border-[#374151] p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Idle</p>
@@ -61,7 +61,7 @@ export default function AgentsPage() {
         {/* Active Agents */}
         {activeAgents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Active Agents ({activeAgents.length})</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Active Agents ({activeAgents.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeAgents.map((agent) => (
                 <AgentCard key={agent.id} agent={agent} />
@@ -73,7 +73,7 @@ export default function AgentsPage() {
         {/* Idle Agents */}
         {idleAgents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Idle Agents ({idleAgents.length})</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Idle Agents ({idleAgents.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {idleAgents.map((agent) => (
                 <AgentCard key={agent.id} agent={agent} />
@@ -85,7 +85,7 @@ export default function AgentsPage() {
         {/* Offline Agents */}
         {offlineAgents.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Offline Agents ({offlineAgents.length})</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Offline Agents ({offlineAgents.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {offlineAgents.map((agent) => (
                 <AgentCard key={agent.id} agent={agent} />

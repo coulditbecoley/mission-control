@@ -13,12 +13,12 @@ export default function ActivityPage() {
   }, []);
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-[#0a0e27] min-h-screen">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Activity Log</h1>
-          <p className="text-gray-600">Track all system events and changes</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Activity Log</h1>
+          <p className="text-gray-400">Track all system events and changes</p>
         </div>
 
         {/* Timeline */}

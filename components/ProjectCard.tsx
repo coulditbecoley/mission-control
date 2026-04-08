@@ -11,28 +11,28 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-[#141829] rounded-lg border border-[#374151] p-6 hover:border-[#4b5563] hover:shadow-lg transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${getProjectColor(project.color)}`}></div>
           <div>
-            <h3 className="font-semibold text-gray-900">{project.name}</h3>
-            <p className="text-sm text-gray-500">{project.owner}</p>
+            <h3 className="font-semibold text-white">{project.name}</h3>
+            <p className="text-sm text-gray-400">{project.owner}</p>
           </div>
         </div>
         <Badge variant="secondary">{project.status}</Badge>
       </div>
 
-      <p className="text-sm text-gray-600 mb-4">{project.description}</p>
+      <p className="text-sm text-gray-400 mb-4">{project.description}</p>
 
       <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-gray-600">Progress</span>
-            <span className="font-semibold">{project.progress}%</span>
+            <span className="text-gray-400">Progress</span>
+            <span className="font-semibold text-white">{project.progress}%</span>
           </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-[#1a1f3a] rounded-full overflow-hidden">
             <div
               className={`h-full ${getProjectColor(project.color)} transition-all`}
               style={{ width: `${project.progress}%` }}

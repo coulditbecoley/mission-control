@@ -58,13 +58,13 @@ export default function KnowledgePage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-[#0a0e27] min-h-screen">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Knowledge Base</h1>
-            <p className="text-gray-600">Document and organize system knowledge</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Knowledge Base</h1>
+            <p className="text-gray-400">Document and organize system knowledge</p>
           </div>
           <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
             <Plus size={18} />
@@ -80,14 +80,14 @@ export default function KnowledgePage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-3">Categories</h3>
+            <h3 className="font-semibold text-white mb-3">Categories</h3>
             <div className="space-y-1">
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={`block w-full text-left px-3 py-2 rounded text-sm ${
                   selectedCategory === null
                     ? 'bg-black text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    : 'text-gray-300 hover:bg-gray-100'
                 }`}
               >
                 All
@@ -99,7 +99,7 @@ export default function KnowledgePage() {
                   className={`block w-full text-left px-3 py-2 rounded text-sm capitalize ${
                     selectedCategory === cat
                       ? 'bg-black text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-300 hover:bg-gray-100'
                   }`}
                 >
                   {cat}
@@ -115,12 +115,12 @@ export default function KnowledgePage() {
                 {filteredItems.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                    className="bg-[#141829] rounded-lg border border-[#374151] p-6 hover:shadow-md transition-shadow cursor-pointer"
                   >
                     <div className="flex items-start gap-3 mb-3">
                       <BookOpen size={20} className="text-gray-400 mt-1 flex-shrink-0" />
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                        <h3 className="font-semibold text-white">{item.title}</h3>
                         <p className="text-xs text-gray-500 mt-1 capitalize">
                           Category: {item.category}
                         </p>
@@ -134,7 +134,7 @@ export default function KnowledgePage() {
                         {item.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                            className="text-xs bg-gray-100 text-gray-300 px-2 py-1 rounded"
                           >
                             {tag}
                           </span>
@@ -168,23 +168,23 @@ export default function KnowledgePage() {
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Title</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               placeholder="Article title"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Content</label>
             <textarea
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
               placeholder="Article content"
               rows={5}
               required
@@ -193,11 +193,11 @@ export default function KnowledgePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
@@ -208,12 +208,12 @@ export default function KnowledgePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Tags</label>
               <input
                 type="text"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
                 placeholder="tag1, tag2, tag3"
               />
             </div>

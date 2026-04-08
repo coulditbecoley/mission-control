@@ -10,6 +10,8 @@
 
 html {
   scroll-behavior: smooth;
+  background: #0a0e27;
+  color: #e5e7eb;
 }
 
 body {
@@ -17,6 +19,8 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #0a0e27;
+  color: #e5e7eb;
 }
 
 input:focus,
@@ -32,14 +36,26 @@ select:focus {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #1a1f3a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #4b5563;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #6b7280;
+}
+
+/* Dark theme color variables */
+:root {
+  --bg-primary: #0a0e27;
+  --bg-secondary: #141829;
+  --bg-tertiary: #1a1f3a;
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --border: #374151;
 }

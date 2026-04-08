@@ -94,13 +94,13 @@ export default function TasksPage() {
   }));
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-[#0a0e27] min-h-screen">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Tasks</h1>
-            <p className="text-gray-600">Manage and track all your tasks</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Tasks</h1>
+            <p className="text-gray-400">Manage and track all your tasks</p>
           </div>
           <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
             <Plus size={18} />
@@ -163,23 +163,23 @@ export default function TasksPage() {
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Title</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               placeholder="Task title"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+              className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
               placeholder="Task description"
               rows={3}
             />
@@ -187,11 +187,11 @@ export default function TasksPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Priority</label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               >
                 {priorityOptions.map((p) => (
                   <option key={p} value={p}>
@@ -202,11 +202,11 @@ export default function TasksPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-[#374151] rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               >
                 {statusOptions.map((s) => (
                   <option key={s} value={s}>
