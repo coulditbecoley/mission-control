@@ -15,31 +15,31 @@ interface Agent {
 }
 
 const DESK_POSITIONS = [
-  { x: 60, y: 100 },
-  { x: 180, y: 100 },
-  { x: 300, y: 100 },
-  { x: 420, y: 100 },
-  { x: 540, y: 100 },
-  { x: 660, y: 100 },
-  { x: 780, y: 100 },
-  { x: 900, y: 100 },
+  { x: 100, y: 180 },
+  { x: 280, y: 180 },
+  { x: 460, y: 180 },
+  { x: 640, y: 180 },
+  { x: 820, y: 180 },
+  { x: 1000, y: 180 },
+  { x: 1180, y: 180 },
+  { x: 1360, y: 180 },
 ];
 
 const BREAK_ROOM_POSITIONS = [
-  { x: 150, y: 280, activity: '☕' },
-  { x: 350, y: 280, activity: '📰' },
-  { x: 550, y: 280, activity: '💬' },
+  { x: 300, y: 420, activity: '☕' },
+  { x: 700, y: 420, activity: '📰' },
+  { x: 1100, y: 420, activity: '💬' },
 ];
 
 const initialAgents: Agent[] = [
-  { id: '1', name: 'Odin', targetX: 60, targetY: 100, currentX: 60, currentY: 100, status: 'working', activity: '💻' },
-  { id: '2', name: 'Loki', targetX: 180, targetY: 100, currentX: 180, currentY: 100, status: 'working', activity: '💻' },
-  { id: '3', name: 'Thor', targetX: 300, targetY: 100, currentX: 300, currentY: 100, status: 'working', activity: '💻' },
-  { id: '4', name: 'Freya', targetX: 420, targetY: 100, currentX: 420, currentY: 100, status: 'working', activity: '💻' },
-  { id: '5', name: 'Heimdall', targetX: 540, targetY: 100, currentX: 540, currentY: 100, status: 'working', activity: '💻' },
-  { id: '6', name: 'Sif', targetX: 660, targetY: 100, currentX: 660, currentY: 100, status: 'working', activity: '💻' },
-  { id: '7', name: 'Vidar', targetX: 780, targetY: 100, currentX: 780, currentY: 100, status: 'working', activity: '💻' },
-  { id: '8', name: 'Modi', targetX: 900, targetY: 100, currentX: 900, currentY: 100, status: 'working', activity: '💻' },
+  { id: '1', name: 'Odin', targetX: 100, targetY: 180, currentX: 100, currentY: 180, status: 'working', activity: '💻' },
+  { id: '2', name: 'Loki', targetX: 280, targetY: 180, currentX: 280, currentY: 180, status: 'working', activity: '💻' },
+  { id: '3', name: 'Thor', targetX: 460, targetY: 180, currentX: 460, currentY: 180, status: 'working', activity: '💻' },
+  { id: '4', name: 'Freya', targetX: 640, targetY: 180, currentX: 640, currentY: 180, status: 'working', activity: '💻' },
+  { id: '5', name: 'Heimdall', targetX: 820, targetY: 180, currentX: 820, currentY: 180, status: 'working', activity: '💻' },
+  { id: '6', name: 'Sif', targetX: 1000, targetY: 180, currentX: 1000, currentY: 180, status: 'working', activity: '💻' },
+  { id: '7', name: 'Vidar', targetX: 1180, targetY: 180, currentX: 1180, currentY: 180, status: 'working', activity: '💻' },
+  { id: '8', name: 'Modi', targetX: 1360, targetY: 180, currentX: 1360, currentY: 180, status: 'working', activity: '💻' },
 ];
 
 // 8-bit character components - each unique
@@ -313,8 +313,8 @@ export default function OfficePage() {
         </div>
 
         {/* Office Canvas */}
-        <div className="flex-1 p-6 bg-gradient-to-b from-[#0a0e27] to-[#0f1318] relative overflow-hidden">
-          <div className="relative w-full h-full">
+        <div className="flex-1 p-8 bg-gradient-to-b from-[#0a0e27] to-[#0f1318] relative overflow-auto">
+          <div className="relative w-full min-w-max" style={{ minHeight: '600px' }}>
             {/* Work Stations */}
             <div className="text-xs font-bold text-gray-600 mb-2">WORK STATIONS</div>
 
@@ -365,7 +365,7 @@ export default function OfficePage() {
             })}
 
             {/* Break Room */}
-            <div className="absolute bottom-4 left-6 w-48 bg-[#141829]/60 border-2 border-[#374151] rounded-lg p-3">
+            <div className="absolute bottom-12 left-12 w-48 bg-[#141829]/60 border-2 border-[#374151] rounded-lg p-3">
               <div className="text-xs font-bold text-gray-500 mb-2">BREAK ROOM</div>
               <div className="grid grid-cols-3 gap-1">
                 <div className="bg-[#1a1f3a] border border-[#374151] rounded p-1 text-center">
