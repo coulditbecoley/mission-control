@@ -126,9 +126,11 @@ export default function Projects() {
           <div className="bg-white/10 rounded-lg p-4 border border-white/20">
             <p className="text-gray-400 text-sm mb-1">Avg Progress</p>
             <p className="text-3xl font-bold text-blue-400">
-              {Math.round(
-                projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length
-              )}
+              {projects.length > 0
+                ? Math.round(
+                    projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length
+                  )
+                : 0}
               %
             </p>
           </div>
