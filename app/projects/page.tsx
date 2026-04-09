@@ -1,146 +1,84 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FolderOpen, Calendar, RefreshCw } from 'lucide-react';
-
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  status: 'planning' | 'active' | 'completed' | 'on-hold';
-  progress?: number;
-  startDate?: string;
-  endDate?: string;
-  source?: 'local' | 'gateway';
-}
+import { FolderOpen, Calendar, RefreshCw, Plus, X } from 'lucide-react';
+import type { ProjectData } from '@/lib/gateway-service';
 
 export default function Projects() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<'local' | 'gateway'>('local');
-  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    status: 'planning' as const,
+    progress: 0,
+  });
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  // Safe date formatter
-  const safeFormatDate = (dateString: any): string | null => {
-    try {
-      if (!dateString || typeof dateString !== 'string') return null;
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return null;
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return null;
-    }
-  };
-
-  // Safe progress validator
-  const safeProgress = (progress: any): number => {
-    try {
-      const num = typeof progress === 'number' ? progress : parseFloat(progress);
-      if (isNaN(num)) return 0;
-      return Math.max(0, Math.min(100, num));
-    } catch {
-      return 0;
-    }
-  };
-
-  // Safe project data processor
-  const processProjectData = (rawData: any): Project | null => {
-    try {
-      if (!rawData || typeof rawData !== 'object') return null;
-
-      const id = String(rawData.id || rawData.key || Math.random());
-      const name = String(rawData.name || rawData.title || 'Unnamed Project').trim();
-      if (!name) return null;
-
-      return {
-        id,
-        name,
-        description: String(rawData.description || '').trim() || undefined,
-        status: mapProjectStatus(rawData.status),
-        progress: safeProgress(rawData.progress),
-        startDate: rawData.startDate,
-        endDate: rawData.endDate,
-        source: rawData.source,
-      };
-    } catch {
-      return null;
-    }
-  };
-
   async function fetchProjects() {
     try {
       setLoading(true);
-      setError(null);
-
-      // Try gateway first
-      try {
-        const gatewayRes = await fetch('/api/gateway', { signal: AbortSignal.timeout(5000) });
-        if (gatewayRes.ok) {
-          const gatewayData = await gatewayRes.json();
-
-          if (Array.isArray(gatewayData?.projects) && gatewayData.projects.length > 0) {
-            const processedProjects = gatewayData.projects
-              .map((p: any) => processProjectData({ ...p, source: 'gateway' }))
-              .filter((p: Project | null): p is Project => p !== null);
-
-            if (processedProjects.length > 0) {
-              setProjects(processedProjects);
-              setSource('gateway');
-              setLoading(false);
-              return;
-            }
-          }
-        }
-      } catch (gatewayError) {
-        console.warn('Gateway fetch failed:', gatewayError);
-      }
-
-      // Fallback to local API
-      try {
-        const localRes = await fetch('/api/projects', { signal: AbortSignal.timeout(5000) });
-        if (localRes.ok) {
-          const localData = await localRes.json();
-
-          if (Array.isArray(localData)) {
-            const processedProjects = localData
-              .map((p: any) => processProjectData({ ...p, source: 'local' }))
-              .filter((p: Project | null): p is Project => p !== null);
-
-            setProjects(processedProjects);
-            setSource('local');
-          }
-        }
-      } catch (localError) {
-        console.warn('Local fetch failed:', localError);
-      }
+      const res = await fetch('/api/gateway');
+      const data = await res.json();
+      setProjects(data.projects || []);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
-      setError('Failed to load projects');
     } finally {
       setLoading(false);
     }
   }
 
-  function mapProjectStatus(status: any): 'planning' | 'active' | 'completed' | 'on-hold' {
+  async function handleAddProject(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!formData.name.trim()) {
+      alert('Project name is required');
+      return;
+    }
+
+    const newProject: ProjectData = {
+      id: `proj-${Date.now()}`,
+      name: formData.name,
+      description: formData.description,
+      status: formData.status,
+      progress: formData.progress,
+    };
+
+    setProjects([newProject, ...projects]);
+
+    // Save to local storage
     try {
-      const s = String(status || '').toLowerCase().trim();
-      if (!s) return 'active';
-      if (s.includes('complete') || s.includes('done')) return 'completed';
-      if (s.includes('hold') || s.includes('pause')) return 'on-hold';
-      if (s.includes('plan')) return 'planning';
-      return 'active';
-    } catch {
-      return 'active';
+      const existingProjects = JSON.parse(localStorage.getItem('dashboard-projects') || '[]');
+      localStorage.setItem('dashboard-projects', JSON.stringify([newProject, ...existingProjects]));
+    } catch (error) {
+      console.error('Failed to save project:', error);
+    }
+
+    setFormData({ name: '', description: '', status: 'planning', progress: 0 });
+    setShowModal(false);
+  }
+
+  async function handleDeleteProject(id: string) {
+    setProjects(projects.filter(p => p.id !== id));
+    try {
+      const existingProjects = JSON.parse(localStorage.getItem('dashboard-projects') || '[]');
+      const updated = existingProjects.filter((p: any) => p.id !== id);
+      localStorage.setItem('dashboard-projects', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Failed to delete project:', error);
     }
   }
+
+  const statusColors: Record<string, string> = {
+    planning: 'bg-blue-900/20 text-blue-400',
+    active: 'bg-green-900/20 text-green-400',
+    completed: 'bg-purple-900/20 text-purple-400',
+    'on-hold': 'bg-yellow-900/20 text-yellow-400',
+  };
 
   if (loading) {
     return (
@@ -153,33 +91,34 @@ export default function Projects() {
     );
   }
 
-  const statusColors: Record<string, string> = {
-    planning: 'bg-blue-900/20 text-blue-400',
-    active: 'bg-green-900/20 text-green-400',
-    completed: 'bg-purple-900/20 text-purple-400',
-    'on-hold': 'bg-yellow-900/20 text-yellow-400',
-  };
-
   return (
     <div className="flex-1 overflow-auto bg-[#0a0e27]">
       <div className="p-8 max-w-6xl">
-        {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <FolderOpen className="text-blue-400" size={32} />
-            <h1 className="text-4xl font-bold text-white">Projects</h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <FolderOpen className="text-blue-400" size={32} />
+              <h1 className="text-4xl font-bold text-white">Projects</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchProjects}
+                className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+              >
+                <RefreshCw size={18} />
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center gap-2 font-semibold"
+              >
+                <Plus size={18} />
+                Add Project
+              </button>
+            </div>
           </div>
-          <p className="text-gray-400">
-            {source === 'gateway' ? '🔗 Synced from OpenClaw Gateway' : '📊 Project management'}
-          </p>
+          <p className="text-gray-400">Manage and track your projects</p>
         </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -204,7 +143,7 @@ export default function Projects() {
             <p className="text-3xl font-bold text-blue-400">
               {projects.length > 0
                 ? Math.round(
-                    projects.reduce((sum, p) => sum + (safeProgress(p?.progress) || 0), 0) /
+                    projects.reduce((sum, p) => sum + (Math.max(0, Math.min(100, p?.progress || 0)) || 0), 0) /
                       projects.length
                   )
                 : 0}
@@ -222,9 +161,7 @@ export default function Projects() {
           ) : (
             projects.map((project) => {
               if (!project?.id || !project?.name) return null;
-              const progress = safeProgress(project.progress);
-              const startDate = safeFormatDate(project.startDate);
-              const endDate = safeFormatDate(project.endDate);
+              const progress = Math.max(0, Math.min(100, project.progress || 0));
               const statusColor = statusColors[project.status || 'active'] || statusColors.active;
 
               return (
@@ -241,9 +178,17 @@ export default function Projects() {
                         </p>
                       )}
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ml-2 ${statusColor}`}>
-                      {project.status || 'active'}
-                    </span>
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${statusColor}`}>
+                        {project.status || 'active'}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteProject(project.id)}
+                        className="text-gray-500 hover:text-red-400 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Progress */}
@@ -261,34 +206,105 @@ export default function Projects() {
                       </div>
                     </div>
                   )}
-
-                  {/* Dates */}
-                  {(startDate || endDate) && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                      <Calendar size={14} />
-                      {startDate && <span>{startDate}</span>}
-                      {startDate && endDate && <span>→</span>}
-                      {endDate && <span>{endDate}</span>}
-                    </div>
-                  )}
                 </div>
               );
             })
           )}
         </div>
-
-        {/* Refresh Button */}
-        <div className="mt-8">
-          <button
-            onClick={fetchProjects}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-400 hover:text-white disabled:opacity-50 transition-colors flex items-center gap-2"
-          >
-            <RefreshCw size={18} />
-            Refresh Projects
-          </button>
-        </div>
       </div>
+
+      {/* Add Project Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141829] border border-white/20 rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-white">Add New Project</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddProject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Project Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter project name"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Optional description"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="planning">Planning</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="on-hold">On Hold</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Progress (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.progress}
+                    onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                >
+                  Add Project
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
