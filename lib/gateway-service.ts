@@ -391,12 +391,12 @@ class GatewayService {
     }
 
     try {
-      const data = await this.fetchFromGateway('ai.usage');
-      const usage = Array.isArray(data) ? data : data?.usage || [];
+      const data = await this.fetchFromGateway('providers.top');
+      const usage = Array.isArray(data) ? data : data?.providers || [];
       this.cache.set(cacheKey, { data: usage, timestamp: Date.now() });
       return usage;
     } catch (error) {
-      console.warn('[Gateway] Failed to fetch AI usage, using demo data:', error);
+      console.warn('[Gateway] Failed to fetch AI providers, using demo data:', error);
       return DEMO_AI_USAGE;
     }
   }

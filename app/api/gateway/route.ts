@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
         'calendar.list - Get list of calendar events',
         'docs.list - Get list of documents',
         'activity.list - Get activity log',
+        'providers.top - Get top AI providers usage',
       ],
 
       gatewayStatus: 'Connected',
