@@ -69,9 +69,11 @@ class GatewayRpcClient {
           console.log('[RPC] WebSocket connected, waiting for challenge...');
         });
 
-        this.ws.on('message', (data: string) => {
+        this.ws.on('message', (data: any) => {
           try {
-            const msg = JSON.parse(data);
+            // Handle both string and Buffer data
+            const str = typeof data === 'string' ? data : data.toString();
+            const msg = JSON.parse(str);
             this._handleMessage(msg);
 
             // Handle connect challenge
