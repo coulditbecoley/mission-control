@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Gauge, RefreshCw, AlertCircle, CheckCircle, TrendingUp } from 'lucide-react';
+import { Gauge, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import type { AIProviderUsage } from '@/lib/gateway-service';
 
 export default function Usage() {
@@ -34,8 +34,7 @@ export default function Usage() {
   }
 
   const totalCostUsed = usage.reduce((sum, u) => sum + u.costUsed, 0);
-  const totalCostLimit = usage.reduce((sum, u) => sum + u.costLimit, 0);
-  const totalPercentage = totalCostLimit > 0 ? (totalCostUsed / totalCostLimit) * 100 : 0;
+  const totalMessages = usage.reduce((sum, u) => sum + u.messages, 0);
   const criticalProviders = usage.filter(u => u.status === 'critical').length;
   const warningProviders = usage.filter(u => u.status === 'warning').length;
 
@@ -111,26 +110,21 @@ export default function Usage() {
               </button>
             </div>
           </div>
-          <p className="text-gray-400">Real-time tracking of AI provider costs and token usage</p>
+          <p className="text-gray-400">Real-time tracking of AI provider costs and usage from OpenClaw Gateway</p>
         </div>
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-            <p className="text-gray-400 text-sm mb-1">Total Cost Used</p>
+            <p className="text-gray-400 text-sm mb-1">Total Cost</p>
             <p className="text-3xl font-bold text-blue-400">${totalCostUsed.toFixed(2)}</p>
-            <p className="text-xs text-gray-500 mt-1">of ${totalCostLimit.toFixed(2)} limit</p>
+            <p className="text-xs text-gray-500 mt-1">across all providers</p>
           </div>
 
           <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-            <p className="text-gray-400 text-sm mb-1">Usage Rate</p>
-            <p className="text-3xl font-bold text-white">{totalPercentage.toFixed(1)}%</p>
-            <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-              <div
-                className={`h-2 rounded-full bg-gradient-to-r ${getProgressBarColor(totalPercentage)}`}
-                style={{ width: `${Math.min(100, totalPercentage)}%` }}
-              />
-            </div>
+            <p className="text-gray-400 text-sm mb-1">Total Messages</p>
+            <p className="text-3xl font-bold text-white">{totalMessages.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">API calls made</p>
           </div>
 
           <div className="bg-white/10 rounded-lg p-4 border border-white/20">
@@ -155,7 +149,7 @@ export default function Usage() {
           </div>
         </div>
 
-        {/* Providers Grid */}
+        {/* Providers List */}
         <div className="space-y-4">
           {usage.length === 0 ? (
             <div className="text-center py-12">
@@ -163,8 +157,7 @@ export default function Usage() {
             </div>
           ) : (
             usage.map((provider) => {
-              const costPercentage = (provider.costUsed / provider.costLimit) * 100;
-              const tokenPercentage = (provider.tokensUsed / provider.tokenLimit) * 100;
+              const costPercentage = (provider.costUsed / (provider.costLimit || 100)) * 100;
 
               return (
                 <div
@@ -174,10 +167,7 @@ export default function Usage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-bold text-white">{provider.provider}</h3>
-                        <span className="text-sm text-gray-400 bg-white/5 px-2 py-1 rounded">
-                          {provider.model}
-                        </span>
+                        <h3 className="text-xl font-bold text-white capitalize">{provider.provider}</h3>
                         <div
                           className={`flex items-center gap-1 ${getStatusColor(provider.status)}`}
                         >
@@ -195,7 +185,7 @@ export default function Usage() {
                         ${provider.costUsed.toFixed(2)}
                       </p>
                       <p className="text-xs text-gray-400">
-                        of ${provider.costLimit.toFixed(2)}
+                        cost
                       </p>
                     </div>
                   </div>
@@ -218,40 +208,16 @@ export default function Usage() {
                     </div>
                   </div>
 
-                  {/* Token Progress */}
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs text-gray-400">Token Usage</span>
-                      <span className="text-xs font-medium text-white">
-                        {(provider.tokensUsed / 1000).toFixed(0)}K / {(provider.tokenLimit / 1000).toFixed(0)}K
-                      </span>
+                  {/* Token & Message Info */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Tokens Used</p>
+                      <p className="text-lg font-bold text-blue-400">{provider.tokens}</p>
                     </div>
-                    <div className="w-full bg-gray-700/50 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full bg-gradient-to-r ${getProgressBarColor(
-                          tokenPercentage
-                        )}`}
-                        style={{ width: `${Math.min(100, tokenPercentage)}%` }}
-                      />
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Messages</p>
+                      <p className="text-lg font-bold text-white">{provider.messages.toLocaleString()}</p>
                     </div>
-                  </div>
-
-                  {/* Last Updated */}
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>
-                      Last updated:{' '}
-                      {new Date(provider.lastUpdated).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </span>
-                    {provider.percentage > 0 && (
-                      <div className="flex items-center gap-1 text-blue-400">
-                        <TrendingUp size={12} />
-                        {provider.percentage.toFixed(1)}% used
-                      </div>
-                    )}
                   </div>
                 </div>
               );
