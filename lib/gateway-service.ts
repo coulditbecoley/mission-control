@@ -70,12 +70,12 @@ export interface ActivityLog {
 export interface AIProviderUsage {
   id: string;
   provider: string;
-  model: string;
-  tokensUsed: number;
-  tokenLimit: number;
   costUsed: number;
-  costLimit: number;
-  percentage: number;
+  costLimit?: number;
+  tokens: string; // e.g., "303.6M"
+  tokensRaw?: number;
+  messages: number;
+  percentage?: number;
   status: 'active' | 'warning' | 'critical';
   lastUpdated: string;
 }
@@ -255,6 +255,23 @@ const DEMO_AI_USAGE: AIProviderUsage[] = [
   },
 ];
 
+// Helper function to parse token strings like "303.6M" to numbers
+function parseTokensToNumber(tokenStr: string): number {
+  if (!tokenStr) return 0;
+  const str = String(tokenStr).toUpperCase();
+  const num = parseFloat(str);
+  if (str.includes('M')) return num * 1_000_000;
+  if (str.includes('K')) return num * 1_000;
+  return num;
+}
+
+// Helper function to determine provider status based on cost
+function getProviderStatus(cost: number): 'active' | 'warning' | 'critical' {
+  if (cost > 75) return 'critical';
+  if (cost > 50) return 'warning';
+  return 'active';
+}
+
 class GatewayService {
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheExpiry: number = 30000; // 30 seconds
@@ -392,12 +409,40 @@ class GatewayService {
 
     try {
       const data = await this.fetchFromGateway('providers.top');
-      const usage = Array.isArray(data) ? data : data?.providers || [];
+      // Parse real provider data from gateway response
+      let usage: AIProviderUsage[] = [];
+      
+      if (Array.isArray(data)) {
+        usage = data.map((provider: any, idx: number) => ({
+          id: `provider-${idx}`,
+          provider: provider.name || provider.provider || 'Unknown',
+          costUsed: parseFloat(provider.cost) || parseFloat(provider.costUsed) || 0,
+          costLimit: 100,
+          tokens: provider.tokens || '0',
+          tokensRaw: parseTokensToNumber(provider.tokens),
+          messages: parseInt(provider.messages) || parseInt(provider.calls) || 0,
+          status: getProviderStatus(parseFloat(provider.cost) || 0),
+          lastUpdated: new Date().toISOString(),
+        }));
+      } else if (data?.providers) {
+        usage = data.providers.map((provider: any, idx: number) => ({
+          id: `provider-${idx}`,
+          provider: provider.name || provider.provider || 'Unknown',
+          costUsed: parseFloat(provider.cost) || parseFloat(provider.costUsed) || 0,
+          costLimit: 100,
+          tokens: provider.tokens || '0',
+          tokensRaw: parseTokensToNumber(provider.tokens),
+          messages: parseInt(provider.messages) || parseInt(provider.calls) || 0,
+          status: getProviderStatus(parseFloat(provider.cost) || 0),
+          lastUpdated: new Date().toISOString(),
+        }));
+      }
+      
       this.cache.set(cacheKey, { data: usage, timestamp: Date.now() });
       return usage;
     } catch (error) {
-      console.warn('[Gateway] Failed to fetch AI providers, using demo data:', error);
-      return DEMO_AI_USAGE;
+      console.error('[Gateway] Failed to fetch AI providers:', error);
+      throw error; // Don't fallback - require real data
     }
   }
 
