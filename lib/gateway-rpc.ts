@@ -1,10 +1,7 @@
 /**
  * OpenClaw Gateway WebSocket RPC Client
- * Proper implementation of the gateway protocol
+ * Using the websocket library for better compatibility
  */
-
-import { createConnection } from 'net';
-import { promisify } from 'util';
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'wss://openclaw-ke4f.srv1566532.hstgr.cloud';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN;
@@ -27,24 +24,16 @@ interface RpcResponse {
   };
 }
 
-interface ConnectChallenge {
-  type: 'event';
-  event: 'connect.challenge';
-  payload: {
-    nonce: string;
-    ts: number;
-  };
-}
-
 class GatewayRpcClient {
-  private ws: any = null;
+  private client: any = null;
+  private connection: any = null;
   private requestId = 0;
   private pendingRequests = new Map<string, { resolve: any; reject: any; timeout: NodeJS.Timeout }>();
   private connected = false;
   private connectionPromise: Promise<void> | null = null;
 
   async connect(): Promise<void> {
-    if (this.connected) return;
+    if (this.connected && this.connection) return;
     if (this.connectionPromise) return this.connectionPromise;
 
     this.connectionPromise = this._connect();
@@ -54,113 +43,104 @@ class GatewayRpcClient {
   private async _connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // Dynamic import of ws module
-        const WebSocket = require('ws');
+        const WebSocketClient = require('websocket').client;
         
-        const connectUrl = GATEWAY_URL.replace('wss://', 'wss://').replace('ws://', 'ws://');
-        console.log('[RPC] Connecting to gateway:', connectUrl);
+        const connectUrl = GATEWAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
+        console.log('[RPC] Creating WebSocket client, URL:', GATEWAY_URL);
         
-        this.ws = new WebSocket(connectUrl, {
-          rejectUnauthorized: false, // For self-signed certs
-          handshakeTimeout: 10000,
-        });
+        this.client = new WebSocketClient();
 
-        this.ws.on('open', () => {
-          console.log('[RPC] WebSocket connected, waiting for challenge...');
-        });
-
-        this.ws.on('message', (data: any) => {
-          try {
-            // Handle both string and Buffer data
-            let str: string;
-            if (Buffer.isBuffer(data)) {
-              str = data.toString('utf-8');
-            } else if (typeof data === 'string') {
-              str = data;
-            } else {
-              console.warn('[RPC] Unexpected message type:', typeof data);
-              return;
-            }
-            
-            const msg = JSON.parse(str);
-            console.log('[RPC] Received message:', msg.type, msg.event || msg.method);
-            this._handleMessage(msg);
-
-            // Handle connect challenge
-            if (msg.type === 'event' && msg.event === 'connect.challenge') {
-              const nonce = msg.payload.nonce;
-              const connectReq: RpcRequest = {
-                type: 'req',
-                id: 'connect-' + Date.now(),
-                method: 'connect',
-                params: {
-                  minProtocol: 3,
-                  maxProtocol: 3,
-                  client: {
-                    id: 'mission-control-dashboard',
-                    version: '1.0.0',
-                    platform: 'web',
-                    mode: 'operator',
-                  },
-                  role: 'operator',
-                  scopes: ['operator.read'],
-                  auth: { token: GATEWAY_TOKEN },
-                  device: {
-                    id: 'dashboard-' + Date.now(),
-                    nonce: nonce,
-                  },
-                },
-              };
-
-              console.log('[RPC] Sending connect request...');
-              try {
-                this.ws.send(JSON.stringify(connectReq));
-              } catch (sendErr) {
-                console.error('[RPC] Failed to send connect:', sendErr);
-              }
-            }
-
-            // Handle connect response
-            if (
-              msg.type === 'res' &&
-              msg.id.startsWith('connect-') &&
-              msg.ok
-            ) {
-              console.log('[RPC] Connected successfully!');
-              this.connected = true;
-              resolve();
-            }
-
-            if (msg.type === 'res' && msg.id?.startsWith?.('connect-')) {
-              if (!msg.ok) {
-                console.error('[RPC] Connect failed:', msg.error);
-                reject(new Error('Connect failed: ' + msg.error?.message));
-              }
-            }
-          } catch (error) {
-            console.error('[RPC] Message parse error:', error);
-          }
-        });
-
-        this.ws.on('error', (error: any) => {
-          console.error('[RPC] WebSocket error:', error.message || error);
-          console.error('[RPC] Error details:', error);
+        this.client.on('connectFailed', (error: any) => {
+          console.error('[RPC] Connect failed:', error.toString());
           reject(error);
         });
 
-        this.ws.on('close', () => {
-          console.log('[RPC] WebSocket closed');
-          this.connected = false;
+        this.client.on('connect', (connection: any) => {
+          console.log('[RPC] WebSocket connection established');
+          this.connection = connection;
+
+          connection.on('error', (error: any) => {
+            console.error('[RPC] Connection error:', error.toString());
+          });
+
+          connection.on('close', () => {
+            console.log('[RPC] Connection closed');
+            this.connected = false;
+            this.connection = null;
+          });
+
+          connection.on('message', (msg: any) => {
+            try {
+              let data: any;
+              if (msg.type === 'utf8') {
+                data = JSON.parse(msg.utf8Data);
+              } else if (msg.type === 'binary') {
+                data = JSON.parse(msg.binaryData.toString());
+              } else {
+                return;
+              }
+
+              console.log('[RPC] Received:', data.type, data.event || data.method);
+              this._handleMessage(data);
+
+              // Handle connect challenge
+              if (data.type === 'event' && data.event === 'connect.challenge') {
+                const nonce = data.payload.nonce;
+                const connectReq: RpcRequest = {
+                  type: 'req',
+                  id: 'connect-' + Date.now(),
+                  method: 'connect',
+                  params: {
+                    minProtocol: 3,
+                    maxProtocol: 3,
+                    client: {
+                      id: 'mission-control-dashboard',
+                      version: '1.0.0',
+                      platform: 'web',
+                      mode: 'operator',
+                    },
+                    role: 'operator',
+                    scopes: ['operator.read'],
+                    auth: { token: GATEWAY_TOKEN },
+                    device: {
+                      id: 'dashboard-' + Date.now(),
+                      nonce: nonce,
+                    },
+                  },
+                };
+
+                console.log('[RPC] Sending connect request');
+                connection.sendUTF(JSON.stringify(connectReq));
+              }
+
+              // Handle connect response
+              if (data.type === 'res' && data.id?.startsWith?.('connect-')) {
+                if (data.ok) {
+                  console.log('[RPC] Connected successfully');
+                  this.connected = true;
+                  resolve();
+                } else {
+                  console.error('[RPC] Connect failed:', data.error);
+                  reject(new Error('Connect failed: ' + data.error?.message));
+                }
+              }
+            } catch (error) {
+              console.error('[RPC] Message error:', error);
+            }
+          });
         });
 
-        // Connection timeout
+        console.log('[RPC] Attempting WebSocket connection...');
+        this.client.connect(GATEWAY_URL, null);
+
+        // Timeout
         setTimeout(() => {
           if (!this.connected) {
             reject(new Error('Gateway connection timeout'));
           }
         }, 15000);
       } catch (error) {
-        console.error('[RPC] Connection error:', error);
+        console.error('[RPC] Setup error:', error);
         reject(error);
       }
     });
@@ -185,6 +165,10 @@ class GatewayRpcClient {
   async call(method: string, params?: any): Promise<any> {
     await this.connect();
 
+    if (!this.connection) {
+      throw new Error('Gateway not connected');
+    }
+
     return new Promise((resolve, reject) => {
       const requestId = 'req-' + (++this.requestId) + '-' + Date.now();
       const timeout = setTimeout(() => {
@@ -202,7 +186,7 @@ class GatewayRpcClient {
       };
 
       try {
-        this.ws.send(JSON.stringify(request));
+        this.connection.sendUTF(JSON.stringify(request));
       } catch (error) {
         this.pendingRequests.delete(requestId);
         clearTimeout(timeout);
@@ -219,21 +203,9 @@ class GatewayRpcClient {
     return this.call('projects.list');
   }
 
-  async getTasks(): Promise<any> {
-    return this.call('tasks.list');
-  }
-
-  async getAgents(): Promise<any> {
-    return this.call('agents.list');
-  }
-
-  async getUsageStatus(): Promise<any> {
-    return this.call('usage.status');
-  }
-
   async close(): Promise<void> {
-    if (this.ws) {
-      this.ws.close();
+    if (this.connection) {
+      this.connection.close();
       this.connected = false;
     }
   }
