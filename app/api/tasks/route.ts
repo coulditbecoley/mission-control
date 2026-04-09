@@ -1,7 +1,5 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const TASKS_FILE = '/docker/mission_control/tasks-data.json';
+import { NextResponse } from 'next/server';
+import { readDataFile, writeDataFile } from '@/lib/paths';
 
 interface Task {
   id: string;
@@ -51,28 +49,14 @@ const DEFAULT_TASKS: Task[] = [
   },
 ];
 
-async function readTasks(): Promise<Task[]> {
-  try {
-    const data = await fs.readFile(TASKS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return DEFAULT_TASKS;
-  }
-}
-
-async function writeTasks(tasks: Task[]): Promise<void> {
-  const dir = path.dirname(TASKS_FILE);
-  try {
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(TASKS_FILE, JSON.stringify(tasks, null, 2));
-  } catch (error) {
-    console.error('Failed to write tasks:', error);
-  }
-}
-
 export async function GET() {
-  const tasks = await readTasks();
-  return Response.json({ tasks });
+  try {
+    const tasks = await readDataFile<Task[]>('tasks.json', DEFAULT_TASKS);
+    return NextResponse.json({ tasks });
+  } catch (error) {
+    console.error('[Tasks GET] Error:', error);
+    return NextResponse.json({ tasks: DEFAULT_TASKS });
+  }
 }
 
 export async function POST(request: Request) {
@@ -80,9 +64,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, task } = body;
 
-    let tasks = await readTasks();
+    if (!action || !task) {
+      return NextResponse.json(
+        { error: 'Missing action or task in request body' },
+        { status: 400 }
+      );
+    }
+
+    let tasks = await readDataFile<Task[]>('tasks.json', DEFAULT_TASKS);
 
     if (action === 'create') {
+      if (!task.title || !task.title.trim()) {
+        return NextResponse.json(
+          { error: 'Task title is required' },
+          { status: 400 }
+        );
+      }
+
       const newTask: Task = {
         ...task,
         id: Date.now().toString(),
@@ -91,21 +89,49 @@ export async function POST(request: Request) {
       };
       tasks.unshift(newTask);
     } else if (action === 'update') {
-      const idx = tasks.findIndex(t => t.id === task.id);
-      if (idx >= 0) {
-        tasks[idx] = {
-          ...task,
-          updatedAt: new Date().toISOString().split('T')[0],
-        };
+      if (!task.id) {
+        return NextResponse.json(
+          { error: 'Task ID is required for update' },
+          { status: 400 }
+        );
       }
+
+      const idx = tasks.findIndex(t => t.id === task.id);
+      if (idx < 0) {
+        return NextResponse.json(
+          { error: 'Task not found' },
+          { status: 404 }
+        );
+      }
+
+      tasks[idx] = {
+        ...tasks[idx],
+        ...task,
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
     } else if (action === 'delete') {
+      if (!task.id) {
+        return NextResponse.json(
+          { error: 'Task ID is required for delete' },
+          { status: 400 }
+        );
+      }
+
       tasks = tasks.filter(t => t.id !== task.id);
+    } else {
+      return NextResponse.json(
+        { error: 'Unknown action. Use: create, update, or delete' },
+        { status: 400 }
+      );
     }
 
-    await writeTasks(tasks);
-    return Response.json({ tasks });
+    await writeDataFile('tasks.json', tasks);
+    return NextResponse.json({ tasks });
   } catch (error) {
-    console.error('Task API error:', error);
-    return Response.json({ error: 'Failed to update tasks' }, { status: 500 });
+    console.error('[Tasks POST] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update tasks', details: String(error) },
+      { status: 500 }
+    );
   }
 }

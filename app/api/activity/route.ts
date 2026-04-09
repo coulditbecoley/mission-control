@@ -1,7 +1,5 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const ACTIVITY_FILE = '/docker/mission_control/activity-data.json';
+import { NextResponse } from 'next/server';
+import { readDataFile, writeDataFile } from '@/lib/paths';
 
 interface Activity {
   id: string;
@@ -61,44 +59,38 @@ const DEFAULT_ACTIVITY: Activity[] = [
   },
 ];
 
-async function readActivity(): Promise<Activity[]> {
-  try {
-    const data = await fs.readFile(ACTIVITY_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return DEFAULT_ACTIVITY;
-  }
-}
-
-async function writeActivity(activity: Activity[]): Promise<void> {
-  const dir = path.dirname(ACTIVITY_FILE);
-  try {
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(ACTIVITY_FILE, JSON.stringify(activity, null, 2));
-  } catch (error) {
-    console.error('Failed to write activity:', error);
-  }
-}
-
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const limit = searchParams.get('limit') || '50';
-  const type = searchParams.get('type');
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = searchParams.get('limit') || '50';
+    const type = searchParams.get('type');
 
-  let activity = await readActivity();
+    let activity = await readDataFile<Activity[]>('activity.json', DEFAULT_ACTIVITY);
 
-  if (type) {
-    activity = activity.filter(a => a.type === type);
+    if (type) {
+      const validTypes = ['task', 'project', 'agent', 'system', 'trade'];
+      if (!validTypes.includes(type)) {
+        return NextResponse.json(
+          { error: `Invalid type. Must be one of: ${validTypes.join(', ')}` },
+          { status: 400 }
+        );
+      }
+      activity = activity.filter(a => a.type === type);
+    }
+
+    // Sort by timestamp descending
+    activity = activity.sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+
+    const limitNum = Math.min(parseInt(limit, 10), 500); // Cap at 500
+    activity = activity.slice(0, limitNum);
+
+    return NextResponse.json({ activity });
+  } catch (error) {
+    console.error('[Activity GET] Error:', error);
+    return NextResponse.json({ activity: DEFAULT_ACTIVITY });
   }
-
-  // Sort by timestamp descending
-  activity = activity.sort((a, b) =>
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
-
-  activity = activity.slice(0, parseInt(limit));
-
-  return Response.json({ activity });
 }
 
 export async function POST(request: Request) {
@@ -106,21 +98,55 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, event } = body;
 
-    let activity = await readActivity();
-
-    if (action === 'log') {
-      const newActivity: Activity = {
-        ...event,
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-      };
-      activity.unshift(newActivity);
+    if (!action || !event) {
+      return NextResponse.json(
+        { error: 'Missing action or event in request body' },
+        { status: 400 }
+      );
     }
 
-    await writeActivity(activity);
-    return Response.json({ activity });
+    if (action !== 'log') {
+      return NextResponse.json(
+        { error: 'Only "log" action is supported' },
+        { status: 400 }
+      );
+    }
+
+    // Validate event structure
+    if (!event.type || !event.action || !event.description || !event.user) {
+      return NextResponse.json(
+        { error: 'Event must have: type, action, description, user' },
+        { status: 400 }
+      );
+    }
+
+    const validTypes = ['task', 'project', 'agent', 'system', 'trade'];
+    if (!validTypes.includes(event.type)) {
+      return NextResponse.json(
+        { error: `Invalid type. Must be one of: ${validTypes.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    let activity = await readDataFile<Activity[]>('activity.json', DEFAULT_ACTIVITY);
+
+    const newActivity: Activity = {
+      ...event,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+    };
+    activity.unshift(newActivity);
+
+    // Keep only last 1000 entries
+    activity = activity.slice(0, 1000);
+
+    await writeDataFile('activity.json', activity);
+    return NextResponse.json({ activity });
   } catch (error) {
-    console.error('Activity API error:', error);
-    return Response.json({ error: 'Failed to log activity' }, { status: 500 });
+    console.error('[Activity POST] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to log activity', details: String(error) },
+      { status: 500 }
+    );
   }
 }
