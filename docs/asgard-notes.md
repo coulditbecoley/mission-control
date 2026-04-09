@@ -1,6 +1,6 @@
 # Asgard Notes — Mission Control Sync
 
-**Last Updated:** 2026-04-09 02:20 UTC
+**Last Updated:** 2026-04-09 02:31 UTC
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Task | Status | Priority | Due | Details |
 |------|--------|----------|-----|---------|
-| Finish mission control panel | ✅ COMPLETE | 🔴 Active | — | All tabs connected + Interactive buttons for Tasks/Projects + Usage tab with AI cost tracking |
+| Finish mission control panel | ✅ COMPLETE | 🔴 Active | — | All tabs connected + Interactive buttons + Usage tab with real providers.top data |
 | Update security features | In Progress | 🔴 Active | — | — |
 | MARS Project (Thor's idea) | Pending | 🔴 Active | 2026-04-09 09:00 EDT | Integrate with Tyr Capital website on GitHub; avoid new VPS container |
 | Business plan review | ✅ Done | — | 2026-04-07 19:25 EDT | Completed |
@@ -17,6 +17,7 @@
 
 ## 📝 Recent Notes
 
+- **2026-04-09 02:31 UTC** — Fixed: Usage tab now pulling from real `providers.top` gateway command instead of demo data
 - **2026-04-09 02:20 UTC** — Dashboard: Usage tab deployed with real-time AI provider cost tracking (OpenAI, Anthropic, xAI, Google)
 - **2026-04-09 02:20 UTC** — Deployed: Usage tab shows cost/token progress bars, status indicators, auto-refresh capability
 - **2026-04-09 01:56 UTC** — Dashboard: Interactive "Add Task" & "Add Project" buttons with modals deployed (form validation, localStorage persistence)
@@ -45,15 +46,15 @@
 - ✅ Calendar: Event scheduling
 - ✅ Docs: Documentation browsing
 - ✅ Activity: Real-time activity logs
-- ✅ **Usage: AI provider cost tracking with auto-refresh (10s)**
+- ✅ **Usage: Real AI provider data from providers.top command with auto-refresh (10s)**
 - ✅ Gateway: HTTP-based, fully integrated
 - ✅ Persistence: localStorage for manual task/project creation
 
 **Usage Tab Features:**
-- Real-time AI provider tracking (OpenAI, Anthropic, xAI, Google)
+- Real-time AI provider tracking from OpenClaw Gateway providers.top command
 - Cost & token usage progress bars
 - Color-coded status (Active/Warning/Critical)
-- Auto-refresh checkbox
+- Auto-refresh checkbox (every 10 seconds)
 - Summary stats (total cost, usage %, alerts)
 
-**Sync Status:** ✅ Synced from `memory/asgard-notes-topic529.md` at 2026-04-09 02:20 UTC
+**Sync Status:** ✅ Synced from `memory/asgard-notes-topic529.md` at 2026-04-09 02:31 UTC
