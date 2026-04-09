@@ -72,8 +72,18 @@ class GatewayRpcClient {
         this.ws.on('message', (data: any) => {
           try {
             // Handle both string and Buffer data
-            const str = typeof data === 'string' ? data : data.toString();
+            let str: string;
+            if (Buffer.isBuffer(data)) {
+              str = data.toString('utf-8');
+            } else if (typeof data === 'string') {
+              str = data;
+            } else {
+              console.warn('[RPC] Unexpected message type:', typeof data);
+              return;
+            }
+            
             const msg = JSON.parse(str);
+            console.log('[RPC] Received message:', msg.type, msg.event || msg.method);
             this._handleMessage(msg);
 
             // Handle connect challenge
@@ -103,7 +113,11 @@ class GatewayRpcClient {
               };
 
               console.log('[RPC] Sending connect request...');
-              this.ws.send(JSON.stringify(connectReq));
+              try {
+                this.ws.send(JSON.stringify(connectReq));
+              } catch (sendErr) {
+                console.error('[RPC] Failed to send connect:', sendErr);
+              }
             }
 
             // Handle connect response
@@ -117,16 +131,20 @@ class GatewayRpcClient {
               resolve();
             }
 
-            if (msg.type === 'res' && msg.id.startsWith('connect-') && !msg.ok) {
-              reject(new Error('Connect failed: ' + msg.error?.message));
+            if (msg.type === 'res' && msg.id?.startsWith?.('connect-')) {
+              if (!msg.ok) {
+                console.error('[RPC] Connect failed:', msg.error);
+                reject(new Error('Connect failed: ' + msg.error?.message));
+              }
             }
           } catch (error) {
             console.error('[RPC] Message parse error:', error);
           }
         });
 
-        this.ws.on('error', (error: Error) => {
-          console.error('[RPC] WebSocket error:', error.message);
+        this.ws.on('error', (error: any) => {
+          console.error('[RPC] WebSocket error:', error.message || error);
+          console.error('[RPC] Error details:', error);
           reject(error);
         });
 
