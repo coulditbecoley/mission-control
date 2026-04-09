@@ -1,9 +1,11 @@
 /**
  * OpenClaw Gateway Service
  * 
- * Fetches data from OpenClaw Gateway with automatic fallback to demo data
+ * Uses WebSocket RPC client to fetch real data from OpenClaw Gateway
  * Handles all data types: sessions, projects, tasks, agents, events, docs, activity
  */
+
+import { callGateway } from './gateway-rpc';
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'wss://openclaw-ke4f.srv1566532.hstgr.cloud';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN;
@@ -403,35 +405,12 @@ class GatewayService {
       throw new Error('Gateway not configured');
     }
 
-    // Convert WebSocket URL to HTTP for REST queries
-    let httpUrl = GATEWAY_URL;
-    if (httpUrl.startsWith('wss://')) {
-      httpUrl = httpUrl.replace('wss://', 'https://');
-    } else if (httpUrl.startsWith('ws://')) {
-      httpUrl = httpUrl.replace('ws://', 'http://');
-    }
-
-    const url = new URL(httpUrl);
-    url.searchParams.append('command', command);
-
+    // Use WebSocket RPC client instead of HTTP
     try {
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${GATEWAY_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gateway returned ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await callGateway(command);
       return data;
     } catch (error) {
-      console.error(`[Gateway] Fetch failed for ${command}:`, error);
+      console.error(`[Gateway] RPC failed for ${command}:`, error);
       throw error;
     }
   }
