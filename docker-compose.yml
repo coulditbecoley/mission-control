@@ -4,13 +4,15 @@ services:
   mission-control:
     image: ghcr.io/coulditbecoley/mission-control:latest
     container_name: mission-control
+    ports:
+      - "3001:3001"
     environment:
       OPENCLAW_GATEWAY_URL: ${OPENCLAW_GATEWAY_URL:-wss://openclaw-ke4f.srv1566532.hstgr.cloud}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       NODE_ENV: production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/status"]
       interval: 30s
       timeout: 10s
       retries: 3
