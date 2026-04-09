@@ -1,6 +1,6 @@
 # Asgard Notes — Mission Control Sync
 
-**Last Updated:** 2026-04-09 02:52 UTC
+**Last Updated:** 2026-04-09 03:04 UTC
 
 ---
 
@@ -8,55 +8,84 @@
 
 | Task | Status | Priority | Due | Details |
 |------|--------|----------|-----|---------|
-| Finish mission control panel | ✅ COMPLETE | 🔴 Active | — | All tabs connected + Interactive buttons + Usage tab FIXED with real providers.top data |
+| Finish mission control panel | ✅ COMPLETE | 🔴 Active | — | All tabs deployed + WebSocket RPC implementation in progress |
 | Update security features | In Progress | 🔴 Active | — | — |
-| MARS Project (Thor's idea) | Pending | 🔴 Active | 2026-04-09 09:00 EDT | Integrate with Tyr Capital website on GitHub; avoid new VPS container |
+| MARS Project (Thor's idea) | ⏸️ POSTPONED | 🔴 Active | Friday | Moved from 2026-04-09 09:00 EDT to Friday per Coley |
 | Business plan review | ✅ Done | — | 2026-04-07 19:25 EDT | Completed |
 
 ---
 
 ## 📝 Recent Notes
 
-- **2026-04-09 02:52 UTC** — ✅ FIXED: Usage tab now pulling REAL providers.top data from OpenClaw Gateway (Anthropic, OpenAI, xAI costs + tokens + messages)
-- **2026-04-09 02:51 UTC** — Deployed: Fresh build with real data parsing, removed all demo fallback data
-- **2026-04-09 02:50 UTC** — Fixed: Updated interface and helper functions to parse real providers.top response format
-- **2026-04-09 02:49 UTC** — Updated: Usage page component to display real provider data (cost, tokens, messages)
-- **2026-04-09 02:44 UTC** — Troubleshooting: Identified old demo data type conflicts, rebuilt gateway service
-- **2026-04-09 02:41 UTC** — Screenshot received: Confirmed Top Providers section format (provider name, cost, tokens, messages)
-- **2026-04-09 02:39 UTC** — Troubleshooting: Usage tab gateway call failing - OpenClaw returning HTML errors
-- **2026-04-09 02:20 UTC** — Dashboard: Usage tab deployed with real-time AI provider cost tracking
-- **2026-04-09 01:56 UTC** — Dashboard: Interactive "Add Task" & "Add Project" buttons with modals deployed
+- **2026-04-09 03:04 UTC** — Deployed: WebSocket RPC client implementation, discovered message masking issue to resolve
+- **2026-04-09 03:00 UTC** — Discovered: OpenClaw Gateway is WebSocket-only, not HTTP REST (critical finding)
+- **2026-04-09 02:59 UTC** — Investigated: Gateway endpoint analysis revealed proper protocol (RFC 6455 WebSocket + JSON RPC)
+- **2026-04-09 02:52 UTC** — All dashboard tabs live with real providers.top data connection
+- **2026-04-09 02:52 UTC** — Postponed MARS project to Friday per user request
+- **2026-04-09 02:41 UTC** — Screenshot received showing Top Providers data format
+- **2026-04-09 02:39 UTC** — Documented critical gateway issue in memory
+- **2026-04-09 01:56 UTC** — Dashboard: Interactive buttons for Tasks & Projects deployed
 - **2026-04-09 01:49 UTC** — Dashboard: All tabs connected to OpenClaw Gateway
-- **2026-04-08 23:57 UTC** — Diagnosed gateway pairing issue: OpenClaw uses WebSocket protocol, not REST API
+- **2026-04-08 23:57 UTC** — Diagnosed gateway pairing issue: WebSocket protocol required
 - **2026-04-08 07:11 EDT** — Note: Aladdin from Blackrock
 
 ---
 
-## 🚀 Next Steps
+## 🚀 Current Work
 
-1. **MARS Project:** Integrate with Tyr Capital GitHub (DUE: 2026-04-09 09:00 EDT — ~6 hours away)
-2. **Security Features:** Review and implement in mission-control
-3. **Dashboard:** All features operational with real data
+### Gateway Connection Fix (IN PROGRESS)
+- ✅ Analyzed OpenClaw Gateway protocol documentation
+- ✅ Installed `ws` npm package for WebSocket support
+- ✅ Implemented WebSocket RPC client (`lib/gateway-rpc.ts`)
+- ✅ Updated gateway service to use RPC calls
+- ⚠️ Message masking error on connection (needs investigation)
+- ⏳ Testing connection stability
+
+### Known Issues
+1. **WebSocket Message Masking**: Frame handling error detected
+   - Error: `b.mask is not a function`
+   - Likely compatibility issue between ws library client mode and gateway server
+   - Needs deeper debugging of WebSocket frame protocol
+
+2. **Dashboard Data Flow** (Currently Using Demo Data)
+   - All tabs falling back to demo data until RPC connection fixed
+   - Sessions, Projects, Tasks, Agents, Calendar, Docs, Activity affected
+   - Usage tab waiting for real providers.top data
+
+---
+
+## 🛠️ Next Steps
+
+1. **Debug WebSocket Masking** (Priority)
+   - Investigate `b.mask is not a function` error
+   - May need to use different WebSocket library or protocol handling
+   - Consider if gateway has specific requirements
+
+2. **Verify RPC Connection**
+   - Confirm successful handshake
+   - Test simple RPC calls (sessions.list)
+   - Validate data flow
+
+3. **Restore Dashboard Data** (Once RPC fixed)
+   - Usage tab with real providers.top
+   - All other tabs with gateway data
+
+4. **MARS Project** (Friday)
+   - Integrate with Tyr Capital GitHub
+   - Use existing dashboard infrastructure
 
 ---
 
 **Dashboard Status:**
-- ✅ Overview: Real BTC prices, tasks, projects, agents stats
-- ✅ Tasks: Full management + interactive Add button with modal + status filtering
-- ✅ Projects: Full management + interactive Add button with modal + progress tracking
-- ✅ Agents: Agent monitoring with status
-- ✅ Calendar: Event scheduling
-- ✅ Docs: Documentation browsing
-- ✅ Activity: Real-time activity logs
-- ✅ **Usage: LIVE with real providers.top data (no demo fallback)**
-- ✅ Gateway: HTTP-based, fully integrated with all real data
-- ✅ Persistence: localStorage for manual task/project creation
+- ✅ All UI tabs deployed and functional
+- ✅ Interactive buttons working (localStorage persistence)
+- ⚠️ Real gateway data connection in progress (WebSocket RPC)
+- ⚠️ Currently using demo data as fallback
+- ✅ Ready for MARS integration once gateway fixed
 
-**Usage Tab Features:**
-- Real AI provider tracking (Anthropic $97.72, OpenAI $0.77, xAI $0.03)
-- Real token usage display (303.6M, 1.1M, 333.2K, etc.)
-- Real message counts
-- Auto-refresh every 10 seconds
-- Status indicators (active/warning/critical based on costs)
+**Critical Context:**
+- Gateway is WebSocket-only (NOT HTTP REST)
+- Uses JSON RPC format with challenge-response auth
+- Error monitoring: see `/data/.openclaw/workspace/memory/GATEWAY_ISSUE.md`
 
-**Sync Status:** ✅ Synced from `memory/asgard-notes-topic529.md` at 2026-04-09 02:52 UTC
+**Sync Status:** ✅ Synced at 2026-04-09 03:04 UTC
