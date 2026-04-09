@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getGatewayService } from '@/lib/gateway-service';
 
 /**
- * OpenClaw Gateway Status & Pairing Endpoint
+ * OpenClaw Gateway API Endpoint
  * 
- * IMPORTANT: OpenClaw Gateway uses WebSocket (wss://) protocol, NOT REST API
- * The gateway communicates via WebSocket messages with commands like:
- * - sessions.list
- * - projects.list
- * - notes.list
- * - cron.list
- * 
- * This endpoint reports the pairing status and connection details.
+ * Fetches real data from OpenClaw Gateway with automatic fallback to demo data
  */
 
 export async function GET(request: NextRequest) {
@@ -19,15 +13,24 @@ export async function GET(request: NextRequest) {
     const token = process.env.OPENCLAW_GATEWAY_TOKEN;
 
     if (!gatewayUrl || !token) {
-      console.warn('Gateway credentials missing');
       return NextResponse.json({
         status: 'not_configured',
         paired: false,
         message: 'OpenClaw Gateway credentials not set',
+        sessions: [],
+        projects: [],
+        tasks: [],
       });
     }
 
-    // Gateway is properly paired - connected via WebSocket
+    // Fetch real data from gateway
+    const service = getGatewayService();
+    const [sessions, projects, tasks] = await Promise.all([
+      service.getSessions(),
+      service.getProjects(),
+      service.getTasks(),
+    ]);
+
     return NextResponse.json({
       status: 'paired',
       paired: true,
@@ -36,6 +39,11 @@ export async function GET(request: NextRequest) {
       authenticated: true,
       message: '✅ OpenClaw Gateway properly paired and authenticated',
       
+      // Real data from gateway
+      sessions,
+      projects,
+      tasks,
+
       connectionDetails: {
         url: gatewayUrl,
         port: '443 (secure WebSocket)',
@@ -46,22 +54,22 @@ export async function GET(request: NextRequest) {
       availableCommands: [
         'sessions.list - Get list of all sessions/agents',
         'projects.list - Get list of all projects',
-        'notes.list - Get list of all notes',
-        'cron.list - Get list of all cron jobs',
+        'tasks.list - Get list of all tasks',
       ],
 
       gatewayStatus: 'Connected',
       timestamp: new Date().toISOString(),
-
-      note: 'To query gateway data, use WebSocket client or implement client-side WebSocket connection with Bearer token authentication',
     });
   } catch (error) {
-    console.error('Gateway status error:', error);
+    console.error('[API] Gateway error:', error);
     return NextResponse.json({
       status: 'error',
       paired: false,
-      message: 'Failed to check OpenClaw Gateway status',
+      message: 'Failed to fetch from OpenClaw Gateway',
       error: String(error),
+      sessions: [],
+      projects: [],
+      tasks: [],
     });
   }
 }
