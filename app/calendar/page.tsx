@@ -1,152 +1,144 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-
-interface ScheduledTask {
-  id: string;
-  name: string;
-  time: string;
-  color: 'orange' | 'red' | 'green' | 'blue' | 'purple';
-  frequency: string;
-}
-
-const MOCK_TASKS: ScheduledTask[] = [
-  { id: '1', name: 'Trend Radar', time: '12:00 PM', color: 'orange', frequency: '5x daily' },
-  { id: '2', name: 'Morning Kickoff', time: '8:30 AM', color: 'orange', frequency: 'Daily' },
-  { id: '3', name: 'YouTube OpenClaw R...', time: '7:00 AM', color: 'red', frequency: 'Daily' },
-  { id: '4', name: 'Scout Morning Resear...', time: '8:30 AM', color: 'green', frequency: 'Daily' },
-  { id: '5', name: 'Morning Brief', time: '8:00 AM', color: 'orange', frequency: 'Daily' },
-  { id: '6', name: 'Trend Radar Daily Dig...', time: '8:00 AM', color: 'orange', frequency: 'Daily' },
-  { id: '7', name: 'Quill Script Writer', time: '9:30 AM', color: 'blue', frequency: 'Daily' },
-  { id: '8', name: 'Daily Digest', time: '9:00 AM', color: 'purple', frequency: 'Daily' },
-  { id: '9', name: 'Evening Wrap Up', time: '5:00 PM', color: 'blue', frequency: 'Daily' },
-  { id: '10', name: 'Health Check', time: '12:00 AM', color: 'green', frequency: '3 hours' },
-  { id: '11', name: 'Weekly Newsletter Dr...', time: '9:30 AM', color: 'purple', frequency: 'Weekly' },
-];
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const getColorClasses = (color: string) => {
-  switch (color) {
-    case 'orange':
-      return 'bg-orange-900/40 text-orange-300 border border-orange-800/50';
-    case 'red':
-      return 'bg-red-900/40 text-red-300 border border-red-800/50';
-    case 'green':
-      return 'bg-emerald-900/40 text-emerald-300 border border-emerald-800/50';
-    case 'blue':
-      return 'bg-blue-900/40 text-blue-300 border border-blue-800/50';
-    case 'purple':
-      return 'bg-purple-900/40 text-purple-300 border border-purple-800/50';
-    default:
-      return 'bg-gray-900/40 text-gray-300';
-  }
-};
+import { useEffect, useState } from 'react';
+import { Calendar, Clock, MapPin, RefreshCw } from 'lucide-react';
+import type { CalendarEvent } from '@/lib/gateway-service';
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const getWeekDates = (date: Date) => {
-    const week = [];
-    const curr = new Date(date);
-    const first = curr.getDate() - curr.getDay();
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(curr.setDate(first + i));
-      week.push(new Date(day));
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  async function fetchEvents() {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/gateway');
+      const data = await res.json();
+      setEvents((data.events || []).sort((a: CalendarEvent, b: CalendarEvent) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      }));
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+    } finally {
+      setLoading(false);
     }
-    return week;
+  }
+
+  const typeColors = {
+    meeting: 'bg-blue-900/20 text-blue-400',
+    deadline: 'bg-red-900/20 text-red-400',
+    reminder: 'bg-yellow-900/20 text-yellow-400',
   };
 
-  const weekDates = getWeekDates(currentDate);
-
-  const goToPreviousWeek = () => {
-    setCurrentDate(new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000));
+  const typeIcons = {
+    meeting: '👥',
+    deadline: '⏰',
+    reminder: '🔔',
   };
 
-  const goToNextWeek = () => {
-    setCurrentDate(new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000));
-  };
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-auto bg-[#0a0e27] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-2">Loading calendar...</p>
+          <div className="w-8 h-8 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-auto bg-[#0a0e27]">
-      <div className="p-8">
-        {/* Header */}
-        <div className="mb-6">
+      <div className="p-8 max-w-6xl">
+        <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Calendar className="text-blue-400" size={28} />
-              <h1 className="text-3xl font-bold text-white">Calendar</h1>
+              <Calendar className="text-blue-400" size={32} />
+              <h1 className="text-4xl font-bold text-white">Calendar</h1>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={goToPreviousWeek}
-                className="p-2 text-gray-400 hover:text-white hover:bg-[#1a1f3a] rounded transition-colors"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <span className="text-sm text-gray-400 w-32 text-center">
-                {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-              <button
-                onClick={goToNextWeek}
-                className="p-2 text-gray-400 hover:text-white hover:bg-[#1a1f3a] rounded transition-colors"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          </div>
-          <p className="text-gray-400">Scheduled tasks and cron jobs</p>
-        </div>
-
-        {/* Week Grid */}
-        <div className="grid grid-cols-7 gap-2">
-          {weekDates.map((date, dayIdx) => (
-            <div
-              key={dayIdx}
-              className="bg-[#141829] rounded-lg border border-[#374151] min-h-[600px] p-3"
+            <button
+              onClick={fetchEvents}
+              className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-400 hover:text-white transition-colors flex items-center gap-2"
             >
-              {/* Day Header */}
-              <div className="mb-4 pb-3 border-b border-[#374151]">
-                <p className="text-xs font-semibold text-gray-400">
-                  {DAYS[date.getDay()]}
-                </p>
-                <p className="text-sm font-bold text-white">
-                  {date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
-                </p>
-              </div>
-
-              {/* Tasks for this day */}
-              <div className="space-y-2">
-                {MOCK_TASKS.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`rounded p-2 text-xs cursor-pointer hover:opacity-80 transition-opacity ${getColorClasses(task.color)}`}
-                  >
-                    <p className="font-semibold truncate text-xs">{task.name}</p>
-                    <p className="text-xs opacity-80">{task.time}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+              <RefreshCw size={18} />
+              Refresh
+            </button>
+          </div>
+          <p className="text-gray-400">Upcoming events and deadlines</p>
         </div>
 
-        {/* Task List Below */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-white mb-4">Always Running</h2>
-          <div className="flex gap-2 flex-wrap">
-            {MOCK_TASKS.map((task) => (
-              <button
-                key={task.id}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${getColorClasses(task.color)}`}
-              >
-                {task.name} • {task.frequency}
-              </button>
-            ))}
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Total Events</p>
+            <p className="text-3xl font-bold text-white">{events.length}</p>
           </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Meetings</p>
+            <p className="text-3xl font-bold text-blue-400">
+              {events.filter(e => e.type === 'meeting').length}
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Deadlines</p>
+            <p className="text-3xl font-bold text-red-400">
+              {events.filter(e => e.type === 'deadline').length}
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Reminders</p>
+            <p className="text-3xl font-bold text-yellow-400">
+              {events.filter(e => e.type === 'reminder').length}
+            </p>
+          </div>
+        </div>
+
+        {/* Events List */}
+        <div className="space-y-4">
+          {events.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400">No upcoming events</p>
+            </div>
+          ) : (
+            events.map((event) => (
+              <div
+                key={event.id}
+                className="bg-white/10 rounded-lg border border-white/20 p-6 hover:border-white/40 transition-all"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-4 flex-1">
+                    <span className="text-3xl">{typeIcons[event.type]}</span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-white">{event.title}</h3>
+                      {event.description && (
+                        <p className="text-sm text-gray-400 mt-1">{event.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${typeColors[event.type]}`}>
+                    {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                  </span>
+                </div>
+
+                {/* Date & Time */}
+                <div className="flex items-center gap-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} />
+                    <span>{new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                  {event.time && (
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} />
+                      <span>{event.time}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

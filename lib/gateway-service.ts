@@ -2,13 +2,13 @@
  * OpenClaw Gateway Service
  * 
  * Fetches data from OpenClaw Gateway with automatic fallback to demo data
- * Handles WebSocket communication and caching
+ * Handles all data types: sessions, projects, tasks, agents, events, docs, activity
  */
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'wss://openclaw-ke4f.srv1566532.hstgr.cloud';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN;
 
-interface SessionData {
+export interface SessionData {
   id: string;
   name: string;
   type: 'agent' | 'user';
@@ -16,7 +16,7 @@ interface SessionData {
   lastActive?: string;
 }
 
-interface ProjectData {
+export interface ProjectData {
   id: string;
   name: string;
   status: 'planning' | 'active' | 'completed' | 'on-hold';
@@ -24,12 +24,47 @@ interface ProjectData {
   description?: string;
 }
 
-interface TaskData {
+export interface TaskData {
   id: string;
   title: string;
   status: 'todo' | 'in-progress' | 'done';
   priority: 'low' | 'medium' | 'high';
   description?: string;
+}
+
+export interface AgentData {
+  id: string;
+  name: string;
+  status: 'active' | 'idle' | 'offline';
+  type: 'agent' | 'worker';
+  tasks?: number;
+  lastActive?: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  time?: string;
+  description?: string;
+  type: 'meeting' | 'deadline' | 'reminder';
+}
+
+export interface Document {
+  id: string;
+  title: string;
+  type: string;
+  lastModified: string;
+  path?: string;
+  tags?: string[];
+}
+
+export interface ActivityLog {
+  id: string;
+  action: string;
+  actor: string;
+  timestamp: string;
+  details?: string;
 }
 
 // Demo data for fallback
@@ -84,6 +119,78 @@ const DEMO_TASKS: TaskData[] = [
   },
 ];
 
+const DEMO_AGENTS: AgentData[] = [
+  {
+    id: 'agent-1',
+    name: 'Trading Bot',
+    status: 'active',
+    type: 'agent',
+    tasks: 3,
+    lastActive: new Date().toISOString(),
+  },
+  {
+    id: 'agent-2',
+    name: 'Data Collector',
+    status: 'idle',
+    type: 'agent',
+    tasks: 1,
+    lastActive: new Date(Date.now() - 3600000).toISOString(),
+  },
+];
+
+const DEMO_EVENTS: CalendarEvent[] = [
+  {
+    id: 'event-1',
+    title: 'MARS Project Due',
+    date: '2026-04-09',
+    time: '09:00',
+    type: 'deadline',
+    description: 'Finish MARS project integration',
+  },
+  {
+    id: 'event-2',
+    title: 'Team Standup',
+    date: '2026-04-09',
+    time: '14:00',
+    type: 'meeting',
+    description: 'Daily team sync',
+  },
+];
+
+const DEMO_DOCS: Document[] = [
+  {
+    id: 'doc-1',
+    title: 'Mission Control Setup Guide',
+    type: 'markdown',
+    lastModified: new Date(Date.now() - 86400000).toISOString(),
+    tags: ['setup', 'documentation'],
+  },
+  {
+    id: 'doc-2',
+    title: 'Gateway Integration',
+    type: 'markdown',
+    lastModified: new Date().toISOString(),
+    tags: ['gateway', 'integration'],
+  },
+];
+
+const DEMO_ACTIVITY: ActivityLog[] = [
+  {
+    id: 'act-1',
+    action: 'Deployed Dashboard',
+    actor: 'Odin',
+    timestamp: new Date(Date.now() - 1800000).toISOString(),
+    details: 'Deployed version 1.0',
+  },
+  {
+    id: 'act-2',
+    action: 'Connected Gateway',
+    actor: 'System',
+    timestamp: new Date(Date.now() - 900000).toISOString(),
+    details: 'OpenClaw Gateway connected',
+  },
+];
+
 class GatewayService {
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheExpiry: number = 30000; // 30 seconds
@@ -96,7 +203,6 @@ class GatewayService {
 
   async getSessions(): Promise<SessionData[]> {
     const cacheKey = 'sessions';
-
     if (this.isCacheValid(cacheKey)) {
       return this.cache.get(cacheKey)!.data;
     }
@@ -114,7 +220,6 @@ class GatewayService {
 
   async getProjects(): Promise<ProjectData[]> {
     const cacheKey = 'projects';
-
     if (this.isCacheValid(cacheKey)) {
       return this.cache.get(cacheKey)!.data;
     }
@@ -132,7 +237,6 @@ class GatewayService {
 
   async getTasks(): Promise<TaskData[]> {
     const cacheKey = 'tasks';
-
     if (this.isCacheValid(cacheKey)) {
       return this.cache.get(cacheKey)!.data;
     }
@@ -145,6 +249,74 @@ class GatewayService {
     } catch (error) {
       console.warn('[Gateway] Failed to fetch tasks, using demo data:', error);
       return DEMO_TASKS;
+    }
+  }
+
+  async getAgents(): Promise<AgentData[]> {
+    const cacheKey = 'agents';
+    if (this.isCacheValid(cacheKey)) {
+      return this.cache.get(cacheKey)!.data;
+    }
+
+    try {
+      const data = await this.fetchFromGateway('agents.list');
+      const agents = Array.isArray(data) ? data : data?.agents || [];
+      this.cache.set(cacheKey, { data: agents, timestamp: Date.now() });
+      return agents;
+    } catch (error) {
+      console.warn('[Gateway] Failed to fetch agents, using demo data:', error);
+      return DEMO_AGENTS;
+    }
+  }
+
+  async getCalendarEvents(): Promise<CalendarEvent[]> {
+    const cacheKey = 'events';
+    if (this.isCacheValid(cacheKey)) {
+      return this.cache.get(cacheKey)!.data;
+    }
+
+    try {
+      const data = await this.fetchFromGateway('calendar.list');
+      const events = Array.isArray(data) ? data : data?.events || [];
+      this.cache.set(cacheKey, { data: events, timestamp: Date.now() });
+      return events;
+    } catch (error) {
+      console.warn('[Gateway] Failed to fetch calendar events, using demo data:', error);
+      return DEMO_EVENTS;
+    }
+  }
+
+  async getDocs(): Promise<Document[]> {
+    const cacheKey = 'docs';
+    if (this.isCacheValid(cacheKey)) {
+      return this.cache.get(cacheKey)!.data;
+    }
+
+    try {
+      const data = await this.fetchFromGateway('docs.list');
+      const docs = Array.isArray(data) ? data : data?.docs || [];
+      this.cache.set(cacheKey, { data: docs, timestamp: Date.now() });
+      return docs;
+    } catch (error) {
+      console.warn('[Gateway] Failed to fetch docs, using demo data:', error);
+      return DEMO_DOCS;
+    }
+  }
+
+  async getActivity(): Promise<ActivityLog[]> {
+    const cacheKey = 'activity';
+    if (this.isCacheValid(cacheKey)) {
+      return this.cache.get(cacheKey)!.data;
+    }
+
+    try {
+      const data = await this.fetchFromGateway('activity.list');
+      const activity = Array.isArray(data) ? data : data?.activity || [];
+      this.cache.set(cacheKey, { data: activity, timestamp: Date.now() });
+      return activity;
+    } catch (error) {
+      console.warn('[Gateway] Failed to fetch activity, using demo data:', error);
+      return DEMO_ACTIVITY;
     }
   }
 
@@ -201,6 +373,7 @@ export function getGatewayService(): GatewayService {
   return service;
 }
 
+// Export helper functions
 export async function fetchGatewaySessions(): Promise<SessionData[]> {
   return getGatewayService().getSessions();
 }
@@ -211,4 +384,20 @@ export async function fetchGatewayProjects(): Promise<ProjectData[]> {
 
 export async function fetchGatewayTasks(): Promise<TaskData[]> {
   return getGatewayService().getTasks();
+}
+
+export async function fetchGatewayAgents(): Promise<AgentData[]> {
+  return getGatewayService().getAgents();
+}
+
+export async function fetchGatewayEvents(): Promise<CalendarEvent[]> {
+  return getGatewayService().getCalendarEvents();
+}
+
+export async function fetchGatewayDocs(): Promise<Document[]> {
+  return getGatewayService().getDocs();
+}
+
+export async function fetchGatewayActivity(): Promise<ActivityLog[]> {
+  return getGatewayService().getActivity();
 }

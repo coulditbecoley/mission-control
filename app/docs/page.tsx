@@ -1,283 +1,151 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { FileText, Search, Plus, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { useEffect, useState } from 'react';
+import { FileText, Tag, Calendar, RefreshCw } from 'lucide-react';
+import type { Document } from '@/lib/gateway-service';
 
-interface DocEntry {
-  id: string;
-  date: string;
-  title: string;
-  category: 'daily' | 'notes';
-  preview: string;
-}
+export default function Docs() {
+  const [docs, setDocs] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const DEFAULT_DOCS: DocEntry[] = [
-  {
-    id: '1',
-    date: '2026-04-08',
-    title: 'Daily Summary — Apr 8, 2026',
-    category: 'daily',
-    preview: 'Deployed Asgard Dashboard with dark theme. Added Calendar tab with Linear-style week view. Updated Health Check timer to 3 hours. Fixed Traefik routing issues and container deployment.',
-  },
-  {
-    id: '2',
-    date: '2026-04-08',
-    title: 'Mission Control Features',
-    category: 'notes',
-    preview: 'Priority features to implement: Real-time gateway monitoring, Task auto-sync from Telegram, Knowledge base full-text search integration, Agent performance metrics dashboard.',
-  },
-  {
-    id: '3',
-    date: '2026-04-07',
-    title: 'Daily Summary — Apr 7, 2026',
-    category: 'daily',
-    preview: 'Built initial Mission Control dashboard. Configured Docker deployment on Hostinger VPS. Set up GitHub Actions CI/CD pipeline. Integrated OpenClaw gateway health checks.',
-  },
-  {
-    id: '4',
-    date: '2026-04-07',
-    title: 'Tyr Capital Q2 Strategy',
-    category: 'notes',
-    preview: 'Focus areas: Expand lending portfolio, improve market research automation, build institutional partnerships, develop proprietary trading signals.',
-  },
-  {
-    id: '5',
-    date: '2026-04-06',
-    title: 'Daily Summary — Apr 6, 2026',
-    category: 'daily',
-    preview: 'Initialized GitHub repository. Designed dashboard architecture. Selected Next.js + Tailwind tech stack. Created backup and deployment procedures.',
-  },
-];
-
-export default function DocsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'daily' | 'notes'>('all');
-  const [selectedDoc, setSelectedDoc] = useState<DocEntry | null>(null);
-  const [docs, setDocs] = useState<DocEntry[]>(DEFAULT_DOCS);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Load docs from API on mount
   useEffect(() => {
-    const loadDocs = async () => {
-      try {
-        const response = await fetch('/api/docs');
-        if (response.ok) {
-          const data = await response.json();
-          setDocs(data.docs || DEFAULT_DOCS);
-        }
-      } catch (error) {
-        console.error('Failed to load docs:', error);
-      }
-    };
-    loadDocs();
+    fetchDocs();
   }, []);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
+  async function fetchDocs() {
     try {
-      const response = await fetch('/api/docs/sync', { method: 'POST' });
-      if (response.ok) {
-        const data = await response.json();
-        setDocs(data.docs || DEFAULT_DOCS);
-      }
+      setLoading(true);
+      const res = await fetch('/api/gateway');
+      const data = await res.json();
+      setDocs((data.docs || []).sort((a: Document, b: Document) => {
+        return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
+      }));
     } catch (error) {
-      console.error('Failed to sync docs:', error);
+      console.error('Failed to fetch docs:', error);
     } finally {
-      setIsRefreshing(false);
+      setLoading(false);
     }
+  }
+
+  const typeColors: Record<string, string> = {
+    markdown: 'bg-blue-900/20 text-blue-400',
+    document: 'bg-purple-900/20 text-purple-400',
+    guide: 'bg-green-900/20 text-green-400',
+    reference: 'bg-yellow-900/20 text-yellow-400',
   };
 
-  const filteredDocs = docs.filter((doc) => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         doc.preview.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-auto bg-[#0a0e27] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-2">Loading docs...</p>
+          <div className="w-8 h-8 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-auto bg-[#0a0e27]">
-      <div className="flex h-full">
-        {/* Left Sidebar - Document List */}
-        <div className="w-80 bg-[#0f1318] border-r border-[#374151] flex flex-col">
-          {/* Header */}
-          <div className="p-6 border-b border-[#374151]">
-            <div className="flex items-center gap-3 mb-4">
-              <FileText className="text-blue-400" size={24} />
-              <h1 className="text-xl font-bold text-white">Docs</h1>
+      <div className="p-8 max-w-6xl">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <FileText className="text-blue-400" size={32} />
+              <h1 className="text-4xl font-bold text-white">Documentation</h1>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-              <input
-                type="text"
-                placeholder="Search documents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 bg-[#1a1f3a] border border-[#374151] text-white placeholder-gray-500 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Refresh Button */}
-          <div className="px-4 pt-3 pb-2">
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#1a1f3a] border border-[#374151] text-gray-300 hover:text-white hover:border-[#4b5563] rounded text-sm transition-colors disabled:opacity-50"
+              onClick={fetchDocs}
+              className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-400 hover:text-white transition-colors flex items-center gap-2"
             >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? 'Syncing...' : 'Sync Notes'}
+              <RefreshCw size={18} />
+              Refresh
             </button>
           </div>
+          <p className="text-gray-400">Browse guides, documentation, and references</p>
+        </div>
 
-          {/* Filter Tabs */}
-          <div className="px-4 pt-3 pb-3 border-b border-[#374151] flex gap-2">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'daily', label: 'Daily' },
-              { id: 'notes', label: 'Notes' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedCategory(tab.id as 'all' | 'daily' | 'notes')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  selectedCategory === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Total Documents</p>
+            <p className="text-3xl font-bold text-white">{docs.length}</p>
           </div>
-
-          {/* Document List */}
-          <div className="flex-1 overflow-y-auto">
-            {filteredDocs.length === 0 ? (
-              <div className="p-4 text-center text-gray-400">No documents found</div>
-            ) : (
-              <div className="space-y-1 p-2">
-                {filteredDocs.map((doc) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => setSelectedDoc(doc)}
-                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                      selectedDoc?.id === doc.id
-                        ? 'bg-[#1a1f3a] border border-[#4b5563]'
-                        : 'hover:bg-[#1a1f3a] border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <p className="text-xs text-gray-500">{formatDate(doc.date)}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        doc.category === 'daily'
-                          ? 'bg-orange-900/40 text-orange-300'
-                          : 'bg-blue-900/40 text-blue-300'
-                      }`}>
-                        {doc.category === 'daily' ? '📅 Daily' : '📝 Notes'}
-                      </span>
-                    </div>
-                    <p className="text-sm font-medium text-white truncate">{doc.title}</p>
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">{doc.preview}</p>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Markdown</p>
+            <p className="text-3xl font-bold text-blue-400">
+              {docs.filter(d => d.type === 'markdown').length}
+            </p>
           </div>
-
-          {/* New Doc Button */}
-          <div className="p-4 border-t border-[#374151]">
-            <Button variant="primary" className="w-full flex items-center justify-center gap-2">
-              <Plus size={16} />
-              New Doc
-            </Button>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">Guides</p>
+            <p className="text-3xl font-bold text-green-400">
+              {docs.filter(d => d.type === 'guide').length}
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+            <p className="text-gray-400 text-sm mb-1">References</p>
+            <p className="text-3xl font-bold text-yellow-400">
+              {docs.filter(d => d.type === 'reference').length}
+            </p>
           </div>
         </div>
 
-        {/* Right Panel - Document Content */}
-        <div className="flex-1 p-8 overflow-y-auto">
-          {selectedDoc ? (
-            <div>
-              {/* Document Header */}
-              <div className="mb-8">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className={`text-sm px-3 py-1 rounded ${
-                    selectedDoc.category === 'daily'
-                      ? 'bg-orange-900/40 text-orange-300'
-                      : 'bg-blue-900/40 text-blue-300'
-                  }`}>
-                    {selectedDoc.category === 'daily' ? '📅 Daily Summary' : '📝 Notes'}
-                  </span>
-                  <span className="text-xs text-gray-500">{formatDate(selectedDoc.date)}</span>
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">{selectedDoc.title}</h1>
-                <p className="text-sm text-gray-400">{selectedDoc.preview.length} characters</p>
-              </div>
-
-              {/* Document Content */}
-              <div className="prose prose-invert max-w-none">
-                <div className="bg-[#141829] border border-[#374151] rounded-lg p-6">
-                  {selectedDoc.category === 'daily' ? (
-                    <div className="space-y-6">
-                      <section>
-                        <h2 className="text-xl font-semibold text-white mb-3">Accomplishments</h2>
-                        <ul className="list-disc list-inside space-y-2 text-gray-300">
-                          <li>Deployed Asgard Dashboard with complete dark theme styling</li>
-                          <li>Added Calendar tab with Linear-style week view layout</li>
-                          <li>Implemented color-coded cron job tracking</li>
-                          <li>Fixed Docker deployment and Traefik routing issues</li>
-                          <li>Updated Health Check frequency to 3-hour intervals</li>
-                        </ul>
-                      </section>
-
-                      <section>
-                        <h2 className="text-xl font-semibold text-white mb-3">Key Decisions</h2>
-                        <ul className="list-disc list-inside space-y-2 text-gray-300">
-                          <li>Switched from Traefik subdomain routing to direct port mapping (3001)</li>
-                          <li>Implemented automated backup system for code safety</li>
-                          <li>Created deployment checklist to prevent future breakages</li>
-                        </ul>
-                      </section>
-
-                      <section>
-                        <h2 className="text-xl font-semibold text-white mb-3">Blockers & Issues</h2>
-                        <ul className="list-disc list-inside space-y-2 text-gray-300">
-                          <li>Initial Dockerfile didn't copy app source files (fixed)</li>
-                          <li>Browser caching delays (mitigated with hard refresh instructions)</li>
-                        </ul>
-                      </section>
-
-                      <section>
-                        <h2 className="text-xl font-semibold text-white mb-3">Next Steps</h2>
-                        <ul className="list-disc list-inside space-y-2 text-gray-300">
-                          <li>Add real-time gateway monitoring metrics</li>
-                          <li>Integrate Telegram Notes sync to Docs dashboard</li>
-                          <li>Implement full-text search for knowledge base</li>
-                          <li>Add agent performance analytics</li>
-                        </ul>
-                      </section>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 text-gray-300">
-                      <p>{selectedDoc.preview}</p>
-                      <div className="bg-[#0a0e27] border border-[#374151] rounded p-4">
-                        <p className="text-xs text-gray-500 mb-2">Full note content here...</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+        {/* Docs Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {docs.length === 0 ? (
+            <div className="col-span-2 text-center py-12">
+              <p className="text-gray-400">No documents found</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <FileText className="text-gray-600 mb-4" size={48} />
-              <p className="text-gray-400">Select a document to view</p>
-            </div>
+            docs.map((doc) => (
+              <div
+                key={doc.id}
+                className="bg-white/10 rounded-lg border border-white/20 p-6 hover:border-white/40 transition-all cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <FileText className="text-gray-400 mt-1 flex-shrink-0" size={20} />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-white truncate">{doc.title}</h3>
+                      <p className="text-sm text-gray-400 mt-1">{doc.type}</p>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-1 rounded whitespace-nowrap flex-shrink-0 ml-2 ${
+                      typeColors[doc.type] || 'bg-gray-900/20 text-gray-400'
+                    }`}
+                  >
+                    {doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}
+                  </span>
+                </div>
+
+                {/* Tags */}
+                {doc.tags && doc.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {doc.tags.map((tag) => (
+                      <div key={tag} className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded border border-white/10 text-xs text-gray-400">
+                        <Tag size={12} />
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Last Modified */}
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Calendar size={14} />
+                  <span>
+                    Modified{' '}
+                    {new Date(doc.lastModified).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>

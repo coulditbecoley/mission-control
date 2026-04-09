@@ -1,241 +1,176 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, CheckCircle2, Zap } from 'lucide-react';
+import { TrendingUp, Zap, CheckCircle, Activity } from 'lucide-react';
 
-interface OverviewData {
-  portfolioValue: number;
-  portfolioGrowth: number;
-  bitcoinPrice: number;
-  bitcoinChange24h: number;
-  totalDeposits: number;
-  totalTrades: number;
-  winRate: number;
-  taskProgress: number;
+interface GatewayData {
+  sessions: any[];
+  projects: any[];
+  tasks: any[];
+  agents: any[];
 }
 
 export default function Overview() {
-  const [data, setData] = useState<OverviewData>({
-    portfolioValue: 0,
-    portfolioGrowth: 0,
-    bitcoinPrice: 0,
-    bitcoinChange24h: 0,
-    totalDeposits: 0,
-    totalTrades: 0,
-    winRate: 0,
-    taskProgress: 0,
+  const [data, setData] = useState<GatewayData>({
+    sessions: [],
+    projects: [],
+    tasks: [],
+    agents: [],
   });
-
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchData();
+    fetchBTCPrice();
   }, []);
 
-  async function fetchDashboardData() {
+  async function fetchData() {
     try {
       setLoading(true);
-      
-      // Fetch Bitcoin price from CoinGecko
-      const btcResponse = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
-      );
-      const btcData = btcResponse.ok ? await btcResponse.json() : null;
-      const bitcoinPrice = btcData?.bitcoin?.usd || 42850;
-      const bitcoinChange24h = btcData?.bitcoin?.usd_24h_change || 1.2;
-
-      // Fetch user's journal data (deposits + trades)
-      const journalResponse = await fetch('/api/trading/trades');
-      const journalData = journalResponse.ok ? await journalResponse.json() : { deposits: [], trades: [] };
-
-      // Calculate portfolio metrics
-      const totalDeposits = journalData.deposits?.reduce((sum: number, d: any) => sum + d.amount, 0) || 0;
-      const totalTrades = journalData.trades?.length || 0;
-      const winTrades = journalData.trades?.filter((t: any) => t.pnl >= 0).length || 0;
-      const winRate = totalTrades > 0 ? (winTrades / totalTrades) * 100 : 0;
-
-      const totalPnL = journalData.trades?.reduce((sum: number, t: any) => sum + t.pnl, 0) || 0;
-      const portfolioValue = totalDeposits + totalPnL;
-      const portfolioGrowth = totalDeposits > 0 ? ((totalPnL / totalDeposits) * 100) : 0;
-
-      // Fetch task progress
-      const tasksResponse = await fetch('/api/tasks');
-      const tasksData = tasksResponse.ok ? await tasksResponse.json() : [];
-      const completedTasks = tasksData.filter((t: any) => t.status === 'completed').length;
-      const taskProgress = tasksData.length > 0 ? (completedTasks / tasksData.length) * 100 : 0;
-
+      const res = await fetch('/api/gateway');
+      const gatewayData = await res.json();
       setData({
-        portfolioValue: Math.round(portfolioValue),
-        portfolioGrowth: parseFloat(portfolioGrowth.toFixed(2)),
-        bitcoinPrice: Math.round(bitcoinPrice),
-        bitcoinChange24h: parseFloat(bitcoinChange24h.toFixed(2)),
-        totalDeposits: Math.round(totalDeposits),
-        totalTrades,
-        winRate: parseFloat(winRate.toFixed(1)),
-        taskProgress: Math.round(taskProgress),
+        sessions: gatewayData.sessions || [],
+        projects: gatewayData.projects || [],
+        tasks: gatewayData.tasks || [],
+        agents: gatewayData.agents || [],
       });
-
-      setError(null);
-    } catch (err) {
-      console.error('Failed to fetch dashboard data', err);
-      setError('Unable to load some data');
-      // Keep previous values on error
+    } catch (error) {
+      console.error('Failed to fetch gateway data:', error);
     } finally {
       setLoading(false);
     }
   }
 
-  const StatCard = ({
-    icon: Icon,
-    label,
-    value,
-    change,
-    color,
-  }: {
-    icon: any;
-    label: string;
-    value: string;
-    change: string;
-    color: string;
-  }) => (
-    <div className="bg-white dark:bg-white/10 rounded-lg p-6 border border-white/20">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white mb-4 ${color}`}>
-        <Icon size={24} />
-      </div>
-      <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      <p className={`text-xs mt-2 ${change.startsWith('+') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-        {change}
-      </p>
-    </div>
-  );
-
-  const ProgressBar = ({ progress, label }: { progress: number; label: string }) => (
-    <div className="mb-6">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{label}</span>
-        <span className="text-sm text-gray-600 dark:text-gray-400">{Math.round(progress)}%</span>
-      </div>
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-        <div
-          className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-          style={{ width: `${Math.min(progress, 100)}%` }}
-        />
-      </div>
-    </div>
-  );
-
-  if (loading) {
-    return (
-      <div className="flex-1 overflow-auto bg-[#0a0e27] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400 mb-2">Loading dashboard...</p>
-          <div className="w-8 h-8 border-2 border-gray-600 border-t-accent rounded-full animate-spin mx-auto" />
-        </div>
-      </div>
-    );
+  async function fetchBTCPrice() {
+    try {
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+      const result = await res.json();
+      setBtcPrice(result.bitcoin?.usd || null);
+    } catch (error) {
+      console.error('Failed to fetch BTC price:', error);
+    }
   }
+
+  const completedTasks = data.tasks.filter((t: any) => t.status === 'done').length;
+  const activeTasks = data.tasks.filter((t: any) => t.status === 'in-progress').length;
+  const activeAgents = data.agents.filter((a: any) => a.status === 'active').length;
 
   return (
     <div className="flex-1 overflow-auto bg-[#0a0e27]">
-      <div className="p-8">
+      <div className="p-8 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="text-yellow-400" size={24} />
-            <h1 className="text-4xl font-bold text-white">Overview</h1>
-          </div>
-          <p className="text-gray-400">
-            Real-time dashboard • {new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-          </p>
-          {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
-        </div>
-
-        {/* Stat Cards Grid */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <StatCard
-            icon={BarChart3}
-            label="Portfolio Value"
-            value={`$${data.portfolioValue.toLocaleString()}`}
-            change={`${data.portfolioGrowth >= 0 ? '+' : ''}${data.portfolioGrowth.toFixed(2)}% return`}
-            color="bg-blue-500"
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Bitcoin Price"
-            value={`$${data.bitcoinPrice.toLocaleString()}`}
-            change={`${data.bitcoinChange24h >= 0 ? '+' : ''}${data.bitcoinChange24h.toFixed(2)}% 24h`}
-            color="bg-yellow-500"
-          />
-          <StatCard
-            icon={CheckCircle2}
-            label="Task Progress"
-            value={`${Math.round(data.taskProgress)}%`}
-            change={`On track`}
-            color="bg-green-500"
-          />
-          <StatCard
-            icon={Zap}
-            label="Win Rate"
-            value={`${data.winRate.toFixed(1)}%`}
-            change={`${data.totalTrades} trades`}
-            color="bg-purple-500"
-          />
-        </div>
-
-        {/* Progress Section */}
-        <div className="bg-white dark:bg-white/10 rounded-lg p-8 border border-white/20 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Progress</h2>
-          <ProgressBar progress={data.taskProgress} label="Tasks Completed" />
-          <ProgressBar progress={data.portfolioGrowth > 0 ? Math.min(data.portfolioGrowth, 100) : 0} label="Portfolio Growth" />
+          <h1 className="text-4xl font-bold text-white mb-2">Overview</h1>
+          <p className="text-gray-400">Real-time summary of your work and assets</p>
         </div>
 
         {/* Quick Stats */}
-        <div className="bg-white dark:bg-white/10 rounded-lg p-8 border border-white/20">
-          <div className="flex items-center gap-2 mb-6">
-            <BarChart3 className="text-blue-400" size={20} />
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quick Stats</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* BTC Price */}
+          <div className="p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <TrendingUp className="text-blue-400" size={20} />
+              </div>
+              <span className="text-sm text-gray-400">Bitcoin Price</span>
+            </div>
+            <p className="text-3xl font-bold text-white">
+              {btcPrice ? `$${btcPrice.toLocaleString()}` : 'Loading...'}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">Current market price (CoinGecko)</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Deposits</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">${data.totalDeposits.toLocaleString()}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Capital invested</p>
+          {/* Tasks */}
+          <div className="p-6 bg-gradient-to-br from-green-900/30 to-emerald-900/30 border border-green-500/30 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <CheckCircle className="text-green-400" size={20} />
+              </div>
+              <span className="text-sm text-gray-400">Tasks</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Current Balance</p>
-              <p className={`text-3xl font-bold ${data.portfolioValue >= data.totalDeposits ? 'text-green-400' : 'text-red-400'}`}>
-                ${data.portfolioValue.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {data.portfolioValue >= data.totalDeposits ? 'Profit' : 'Loss'}: ${Math.abs(data.portfolioValue - data.totalDeposits).toLocaleString()}
-              </p>
+            <p className="text-3xl font-bold text-white">{data.tasks.length}</p>
+            <div className="text-xs text-gray-500 mt-2">
+              {completedTasks} done · {activeTasks} in progress
             </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Trades</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{data.totalTrades}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Win rate: {data.winRate.toFixed(1)}%</p>
+          </div>
+
+          {/* Projects */}
+          <div className="p-6 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <Activity className="text-yellow-400" size={20} />
+              </div>
+              <span className="text-sm text-gray-400">Projects</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Bitcoin Price</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">${data.bitcoinPrice.toLocaleString()}</p>
-              <p className={`text-xs mt-1 ${data.bitcoinChange24h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {data.bitcoinChange24h >= 0 ? '↑' : '↓'} {Math.abs(data.bitcoinChange24h).toFixed(2)}% 24h
-              </p>
+            <p className="text-3xl font-bold text-white">{data.projects.length}</p>
+            <p className="text-xs text-gray-500 mt-2">Active management</p>
+          </div>
+
+          {/* Agents */}
+          <div className="p-6 bg-gradient-to-br from-red-900/30 to-pink-900/30 border border-red-500/30 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                <Zap className="text-red-400" size={20} />
+              </div>
+              <span className="text-sm text-gray-400">Agents</span>
             </div>
+            <p className="text-3xl font-bold text-white">{activeAgents}</p>
+            <p className="text-xs text-gray-500 mt-2">Active out of {data.agents.length}</p>
           </div>
         </div>
 
-        {/* Refresh Button */}
-        <div className="mt-6">
-          <button
-            onClick={fetchDashboardData}
-            className="text-sm px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition-colors"
-          >
-            Refresh Data
-          </button>
+        {/* Quick Links */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-100 mb-4">Jump to Section</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { name: 'Tasks', icon: '✓', href: '/tasks', count: data.tasks.length },
+              { name: 'Projects', icon: '📁', href: '/projects', count: data.projects.length },
+              { name: 'Agents', icon: '⚡', href: '/agents', count: activeAgents },
+              { name: 'Calendar', icon: '📅', href: '/calendar' },
+              { name: 'Docs', icon: '📄', href: '/docs' },
+              { name: 'Activity', icon: '🔔', href: '/activity' },
+            ].map((section) => (
+              <a
+                key={section.name}
+                href={section.href}
+                className="p-4 bg-[#141829] border border-[#374151] rounded-lg hover:border-blue-500 transition-colors group"
+              >
+                <div className="text-2xl mb-2">{section.icon}</div>
+                <h3 className="text-sm font-semibold text-gray-300 group-hover:text-white">
+                  {section.name}
+                </h3>
+                {section.count !== undefined && (
+                  <p className="text-xs text-gray-500 mt-1">{section.count}</p>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="bg-[#141829] border border-[#374151] rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">System Status</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-gray-400 mb-1">OpenClaw Gateway</p>
+              <p className="text-lg font-semibold text-green-400">Connected</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Dashboard</p>
+              <p className="text-lg font-semibold text-green-400">Operational</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Data Sync</p>
+              <p className="text-lg font-semibold text-green-400">Real-time</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Last Update</p>
+              <p className="text-lg font-semibold text-gray-300">{new Date().toLocaleTimeString()}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGatewayService } from '@/lib/gateway-service';
+import {
+  getGatewayService,
+  fetchGatewaySessions,
+  fetchGatewayProjects,
+  fetchGatewayTasks,
+  fetchGatewayAgents,
+  fetchGatewayEvents,
+  fetchGatewayDocs,
+  fetchGatewayActivity,
+} from '@/lib/gateway-service';
 
 /**
  * OpenClaw Gateway API Endpoint
  * 
- * Fetches real data from OpenClaw Gateway with automatic fallback to demo data
+ * Fetches real data from OpenClaw Gateway for all dashboard tabs:
+ * - Sessions
+ * - Projects
+ * - Tasks
+ * - Agents
+ * - Calendar Events
+ * - Documents
+ * - Activity Logs
  */
 
 export async function GET(request: NextRequest) {
@@ -20,15 +36,22 @@ export async function GET(request: NextRequest) {
         sessions: [],
         projects: [],
         tasks: [],
+        agents: [],
+        events: [],
+        docs: [],
+        activity: [],
       });
     }
 
-    // Fetch real data from gateway
-    const service = getGatewayService();
-    const [sessions, projects, tasks] = await Promise.all([
-      service.getSessions(),
-      service.getProjects(),
-      service.getTasks(),
+    // Fetch all data in parallel
+    const [sessions, projects, tasks, agents, events, docs, activity] = await Promise.all([
+      fetchGatewaySessions(),
+      fetchGatewayProjects(),
+      fetchGatewayTasks(),
+      fetchGatewayAgents(),
+      fetchGatewayEvents(),
+      fetchGatewayDocs(),
+      fetchGatewayActivity(),
     ]);
 
     return NextResponse.json({
@@ -43,6 +66,10 @@ export async function GET(request: NextRequest) {
       sessions,
       projects,
       tasks,
+      agents,
+      events,
+      docs,
+      activity,
 
       connectionDetails: {
         url: gatewayUrl,
@@ -55,6 +82,10 @@ export async function GET(request: NextRequest) {
         'sessions.list - Get list of all sessions/agents',
         'projects.list - Get list of all projects',
         'tasks.list - Get list of all tasks',
+        'agents.list - Get list of all agents',
+        'calendar.list - Get list of calendar events',
+        'docs.list - Get list of documents',
+        'activity.list - Get activity log',
       ],
 
       gatewayStatus: 'Connected',
@@ -70,6 +101,10 @@ export async function GET(request: NextRequest) {
       sessions: [],
       projects: [],
       tasks: [],
+      agents: [],
+      events: [],
+      docs: [],
+      activity: [],
     });
   }
 }
