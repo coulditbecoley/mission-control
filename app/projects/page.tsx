@@ -152,7 +152,7 @@ export default function Projects() {
                       <p className="text-sm text-gray-400 mt-1">{project.description}</p>
                     )}
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${statusColors[project.status]}`}>
+                  <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${statusColors[project.status] || statusColors.active}`}>
                     {project.status}
                   </span>
                 </div>
@@ -174,11 +174,20 @@ export default function Projects() {
                 )}
 
                 {/* Dates */}
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Calendar size={14} />
-                  {project.startDate && <span>{new Date(project.startDate).toLocaleDateString()}</span>}
-                  {project.endDate && <span>→ {new Date(project.endDate).toLocaleDateString()}</span>}
-                </div>
+                {(project.startDate || project.endDate) && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                    <Calendar size={14} />
+                    {project.startDate ? (
+                      <span>{new Date(project.startDate).toLocaleDateString()}</span>
+                    ) : null}
+                    {project.startDate && project.endDate ? (
+                      <span>→</span>
+                    ) : null}
+                    {project.endDate ? (
+                      <span>{new Date(project.endDate).toLocaleDateString()}</span>
+                    ) : null}
+                  </div>
+                )}
               </div>
             ))
           )}
