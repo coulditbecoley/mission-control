@@ -14,6 +14,7 @@ import {
   Bitcoin,
   BarChart3,
   Terminal,
+  Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +36,7 @@ const tradingItems = [
 ];
 
 const systemItems = [
+  { href: '/usage', icon: Gauge, label: 'Usage' },
   { href: '/logs', icon: Terminal, label: 'Logs' },
 ];
 

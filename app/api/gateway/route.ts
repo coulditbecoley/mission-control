@@ -8,6 +8,7 @@ import {
   fetchGatewayEvents,
   fetchGatewayDocs,
   fetchGatewayActivity,
+  fetchAIUsage,
 } from '@/lib/gateway-service';
 
 /**
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all data in parallel
-    const [sessions, projects, tasks, agents, events, docs, activity] = await Promise.all([
+    const [sessions, projects, tasks, agents, events, docs, activity, aiUsage] = await Promise.all([
       fetchGatewaySessions(),
       fetchGatewayProjects(),
       fetchGatewayTasks(),
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
       fetchGatewayEvents(),
       fetchGatewayDocs(),
       fetchGatewayActivity(),
+      fetchAIUsage(),
     ]);
 
     return NextResponse.json({
@@ -70,6 +72,7 @@ export async function GET(request: NextRequest) {
       events,
       docs,
       activity,
+      aiUsage,
 
       connectionDetails: {
         url: gatewayUrl,

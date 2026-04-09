@@ -67,6 +67,19 @@ export interface ActivityLog {
   details?: string;
 }
 
+export interface AIProviderUsage {
+  id: string;
+  provider: string;
+  model: string;
+  tokensUsed: number;
+  tokenLimit: number;
+  costUsed: number;
+  costLimit: number;
+  percentage: number;
+  status: 'active' | 'warning' | 'critical';
+  lastUpdated: string;
+}
+
 // Demo data for fallback
 const DEMO_SESSIONS: SessionData[] = [
   {
@@ -188,6 +201,57 @@ const DEMO_ACTIVITY: ActivityLog[] = [
     actor: 'System',
     timestamp: new Date(Date.now() - 900000).toISOString(),
     details: 'OpenClaw Gateway connected',
+  },
+];
+
+const DEMO_AI_USAGE: AIProviderUsage[] = [
+  {
+    id: 'openai-1',
+    provider: 'OpenAI',
+    model: 'GPT-4.1',
+    tokensUsed: 145230,
+    tokenLimit: 1000000,
+    costUsed: 8.71,
+    costLimit: 50,
+    percentage: 14.5,
+    status: 'active',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: 'anthropic-1',
+    provider: 'Anthropic',
+    model: 'Claude Sonnet 4.6',
+    tokensUsed: 89450,
+    tokenLimit: 500000,
+    costUsed: 12.34,
+    costLimit: 50,
+    percentage: 17.9,
+    status: 'active',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: 'xai-1',
+    provider: 'xAI',
+    model: 'Grok 4.1',
+    tokensUsed: 34120,
+    tokenLimit: 200000,
+    costUsed: 2.45,
+    costLimit: 50,
+    percentage: 17.1,
+    status: 'active',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: 'google-1',
+    provider: 'Google',
+    model: 'Gemini Pro',
+    tokensUsed: 67890,
+    tokenLimit: 300000,
+    costUsed: 5.23,
+    costLimit: 50,
+    percentage: 22.6,
+    status: 'warning',
+    lastUpdated: new Date().toISOString(),
   },
 ];
 
@@ -320,6 +384,23 @@ class GatewayService {
     }
   }
 
+  async getAIUsage(): Promise<AIProviderUsage[]> {
+    const cacheKey = 'ai-usage';
+    if (this.isCacheValid(cacheKey)) {
+      return this.cache.get(cacheKey)!.data;
+    }
+
+    try {
+      const data = await this.fetchFromGateway('ai.usage');
+      const usage = Array.isArray(data) ? data : data?.usage || [];
+      this.cache.set(cacheKey, { data: usage, timestamp: Date.now() });
+      return usage;
+    } catch (error) {
+      console.warn('[Gateway] Failed to fetch AI usage, using demo data:', error);
+      return DEMO_AI_USAGE;
+    }
+  }
+
   private async fetchFromGateway(command: string): Promise<any> {
     if (!GATEWAY_URL || !GATEWAY_TOKEN) {
       throw new Error('Gateway not configured');
@@ -400,4 +481,8 @@ export async function fetchGatewayDocs(): Promise<Document[]> {
 
 export async function fetchGatewayActivity(): Promise<ActivityLog[]> {
   return getGatewayService().getActivity();
+}
+
+export async function fetchAIUsage(): Promise<AIProviderUsage[]> {
+  return getGatewayService().getAIUsage();
 }
