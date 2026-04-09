@@ -204,59 +204,11 @@ const DEMO_ACTIVITY: ActivityLog[] = [
   },
 ];
 
-const DEMO_AI_USAGE: AIProviderUsage[] = [
-  {
-    id: 'openai-1',
-    provider: 'OpenAI',
-    model: 'GPT-4.1',
-    tokensUsed: 145230,
-    tokenLimit: 1000000,
-    costUsed: 8.71,
-    costLimit: 50,
-    percentage: 14.5,
-    status: 'active',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'anthropic-1',
-    provider: 'Anthropic',
-    model: 'Claude Sonnet 4.6',
-    tokensUsed: 89450,
-    tokenLimit: 500000,
-    costUsed: 12.34,
-    costLimit: 50,
-    percentage: 17.9,
-    status: 'active',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'xai-1',
-    provider: 'xAI',
-    model: 'Grok 4.1',
-    tokensUsed: 34120,
-    tokenLimit: 200000,
-    costUsed: 2.45,
-    costLimit: 50,
-    percentage: 17.1,
-    status: 'active',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'google-1',
-    provider: 'Google',
-    model: 'Gemini Pro',
-    tokensUsed: 67890,
-    tokenLimit: 300000,
-    costUsed: 5.23,
-    costLimit: 50,
-    percentage: 22.6,
-    status: 'warning',
-    lastUpdated: new Date().toISOString(),
-  },
-];
+// Using real data from providers.top - no demo fallback
+const DEMO_AI_USAGE: AIProviderUsage[] = [];
 
 // Helper function to parse token strings like "303.6M" to numbers
-function parseTokensToNumber(tokenStr: string): number {
+function parseTokensToNumber(tokenStr: string | number): number {
   if (!tokenStr) return 0;
   const str = String(tokenStr).toUpperCase();
   const num = parseFloat(str);
