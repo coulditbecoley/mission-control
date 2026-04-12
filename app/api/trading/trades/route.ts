@@ -1,7 +1,5 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const TRADES_FILE = '/docker/mission_control/trades-data.json';
+import { NextResponse } from 'next/server';
+import { readDataFile, writeDataFile } from '@/lib/paths';
 
 interface Trade {
   id: string;
@@ -37,38 +35,24 @@ const DEFAULT_TRADES: Trade[] = [
   },
 ];
 
-async function readTrades(): Promise<Trade[]> {
-  try {
-    const data = await fs.readFile(TRADES_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return DEFAULT_TRADES;
-  }
-}
-
-async function writeTrades(trades: Trade[]): Promise<void> {
-  const dir = path.dirname(TRADES_FILE);
-  try {
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(TRADES_FILE, JSON.stringify(trades, null, 2));
-  } catch (error) {
-    console.error('Failed to write trades:', error);
-  }
-}
-
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const asset = searchParams.get('asset');
-  const limit = searchParams.get('limit') || '50';
+  try {
+    const { searchParams } = new URL(request.url);
+    const asset = searchParams.get('asset');
+    const limit = searchParams.get('limit') || '50';
 
-  let trades = await readTrades();
+    let trades = await readDataFile<Trade[]>('trades.json', DEFAULT_TRADES);
 
-  if (asset) {
-    trades = trades.filter(t => t.asset === asset);
+    if (asset) {
+      trades = trades.filter(t => t.asset === asset);
+    }
+
+    trades = trades.slice(0, parseInt(limit, 10));
+    return NextResponse.json(trades);
+  } catch (error) {
+    console.error('[Trades GET] Error:', error);
+    return NextResponse.json(DEFAULT_TRADES);
   }
-
-  trades = trades.slice(0, parseInt(limit));
-  return Response.json(trades);
 }
 
 export async function POST(request: Request) {
@@ -76,36 +60,95 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, trade } = body;
 
-    let trades = await readTrades();
+    if (!action || !trade) {
+      return NextResponse.json(
+        { error: 'Missing action or trade in request body' },
+        { status: 400 }
+      );
+    }
+
+    let trades = await readDataFile<Trade[]>('trades.json', DEFAULT_TRADES);
 
     if (action === 'add-trade') {
+      // Validate required fields
+      if (!trade.date || !trade.asset || !trade.type || trade.entryPrice === undefined || trade.exitPrice === undefined) {
+        return NextResponse.json(
+          { error: 'Trade must have: date, asset, type, entryPrice, exitPrice' },
+          { status: 400 }
+        );
+      }
+
+      const validTypes = ['long', 'short'];
+      if (!validTypes.includes(trade.type)) {
+        return NextResponse.json(
+          { error: `Invalid trade type. Must be: ${validTypes.join(', ')}` },
+          { status: 400 }
+        );
+      }
+
       const newTrade: Trade = {
         ...trade,
         id: Date.now().toString(),
       };
       trades.unshift(newTrade);
     } else if (action === 'update-trade') {
-      const idx = trades.findIndex(t => t.id === trade.id);
-      if (idx >= 0) {
-        trades[idx] = trade;
+      if (!trade.id) {
+        return NextResponse.json(
+          { error: 'Trade ID is required for update' },
+          { status: 400 }
+        );
       }
+
+      const idx = trades.findIndex(t => t.id === trade.id);
+      if (idx < 0) {
+        return NextResponse.json(
+          { error: 'Trade not found' },
+          { status: 404 }
+        );
+      }
+      trades[idx] = trade;
     } else if (action === 'close-trade') {
-      const idx = trades.findIndex(t => t.id === trade.id);
-      if (idx >= 0) {
-        trades[idx] = {
-          ...trades[idx],
-          ...trade,
-          status: trade.pnl >= 0 ? 'win' : 'loss',
-        };
+      if (!trade.id) {
+        return NextResponse.json(
+          { error: 'Trade ID is required for close' },
+          { status: 400 }
+        );
       }
+
+      const idx = trades.findIndex(t => t.id === trade.id);
+      if (idx < 0) {
+        return NextResponse.json(
+          { error: 'Trade not found' },
+          { status: 404 }
+        );
+      }
+      trades[idx] = {
+        ...trades[idx],
+        ...trade,
+        status: trade.pnl >= 0 ? 'win' : 'loss',
+      };
     } else if (action === 'delete-trade') {
+      if (!trade.id) {
+        return NextResponse.json(
+          { error: 'Trade ID is required for delete' },
+          { status: 400 }
+        );
+      }
       trades = trades.filter(t => t.id !== trade.id);
+    } else {
+      return NextResponse.json(
+        { error: 'Unknown action. Use: add-trade, update-trade, close-trade, or delete-trade' },
+        { status: 400 }
+      );
     }
 
-    await writeTrades(trades);
-    return Response.json(trades);
+    await writeDataFile('trades.json', trades);
+    return NextResponse.json(trades);
   } catch (error) {
-    console.error('Trades API error:', error);
-    return Response.json({ error: 'Failed to update trades' }, { status: 500 });
+    console.error('[Trades POST] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update trades', details: String(error) },
+      { status: 500 }
+    );
   }
 }
